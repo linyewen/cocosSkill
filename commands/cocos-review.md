@@ -31,3 +31,9 @@
 ## @property
 - [ ] 新增 @property 是否同步在 scene/prefab JSON 中绑定（原子操作）
 - [ ] 没有用 `getChildByName` 做 @property 的 fallback
+
+## 修改影响检查（每次改动后必查）
+- [ ] **谁引用了被修改的节点？** — grep 该节点的 `__id__`/name，检查所有 scene/prefab/script 中的绑定是否还正确
+- [ ] **被修改节点引用了谁？** — 该节点的 @property/__id__ 绑定是否还指向正确目标
+- [ ] **运行时依赖链完整吗？** — getChildByName/children[] 等隐式依赖是否仍然成立
+- [ ] **从触发到效果走一遍** — 模拟调用链，确认修改后每一步都通
