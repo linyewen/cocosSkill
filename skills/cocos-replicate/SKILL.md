@@ -239,6 +239,54 @@ const btn = parent._children.find(c => scene[c.__id__]._name === 'New Button');
 
 ---
 
+## Prefab 文件格式（与 Scene 不同！）
+
+**Scene 和 Prefab 是不同的文件格式，不能用同一种方式编辑。**
+
+### Scene vs Prefab 区别
+
+| 维度 | Scene 文件 | Prefab 文件 |
+|------|-----------|------------|
+| 节点的 `_prefab` | 无 | **每个节点必须有** → PrefabInfo |
+| 组件的 `__prefab` | 无 | **每个组件必须有** → CompPrefabInfo |
+| `_parent` 根节点 | `__id__` 指向 Scene | `null`（prefab 根没有父节点） |
+| 数组截断 | 风险中等 | **直接破坏文件，编辑器无法加载** |
+
+### Prefab 标准结构
+
+```json
+[0] cc.Prefab { data: { __id__: 1 } }
+[1] cc.Node (根节点) {
+      _prefab: { __id__: N },  // → PrefabInfo
+      _components: [
+        { __id__: 2 },  // UITransform
+        { __id__: 4 },  // 脚本组件
+      ]
+    }
+[2] cc.UITransform { __prefab: { __id__: 3 } }
+[3] cc.CompPrefabInfo { fileId: "ut0" }
+[4] 脚本组件 { __prefab: { __id__: 5 } }
+[5] cc.CompPrefabInfo { fileId: "cp0" }
+[N] cc.PrefabInfo { root: { __id__: 1 }, asset: { __id__: 0 }, fileId: "rootNode" }
+```
+
+### Prefab 修改规则
+
+1. **永远不截断数组** — `array.length = x` 会破坏 PrefabInfo 链，导致 "Open prefab failed"
+2. **每个新节点必须有 PrefabInfo** — `_prefab: { __id__: x }` 指向 `cc.PrefabInfo` 条目
+3. **每个新组件必须有 CompPrefabInfo** — `__prefab: { __id__: x }` 指向 `cc.CompPrefabInfo` 条目
+4. **fileId 必须唯一** — 每个 PrefabInfo/CompPrefabInfo 的 fileId 不能重复
+5. **根节点的 PrefabInfo** 需要 `root: { __id__: 1 }` 和 `asset: { __id__: 0 }`
+6. **子节点的 PrefabInfo** 只需要 `root: { __id__: 1 }` 和 `fileId`
+7. **修改 prefab 不影响引用它的 scene** — scene 通过 UUID 引用 prefab 资源，不关心内部结构
+
+### 不同文件类型的经验不能套用
+
+之前编辑 scene 文件学到的技巧（如截断重建），不能直接用到 prefab 上。
+**修改任何文件格式之前，先研究该格式的必需结构。**
+
+---
+
 ## 工具清单
 
 | 工具 | 用途 |
@@ -268,3 +316,6 @@ const btn = parent._children.find(c => scene[c.__id__]._name === 'New Button');
 | 修复脚本硬编码 ID | 节点移动后 ID 变了，脚本失效 | 动态查找 |
 | 编辑器打开时修改文件 | 保存时被覆盖 | 关闭编辑器再修改 |
 | diff 工具只检查 Canvas | 遗漏 Scene 级节点 | 从 Scene 根开始扫描 |
+| 截断 prefab 数组 | "Open prefab failed" | 永远不截断，只增不删 |
+| prefab 节点缺 PrefabInfo | 编辑器无法解析 | 每个节点/组件都要有对应的 PrefabInfo/CompPrefabInfo |
+| scene 编辑经验套用到 prefab | 格式不同导致文件损坏 | 不同文件类型先研究格式再修改 |
