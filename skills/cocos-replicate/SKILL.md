@@ -108,24 +108,52 @@ argument-hint: "[原版项目路径] [目标项目路径]"
 
 ## 第四步：@property 绑定（最容易出错的环节）
 
-### 4.1 核心方法：逻辑关系绑定
+### 4.1 核心方法：ID 映射表自动翻译（推荐）
 
-**不要**复制 2.x 的 `__id__` 值——它在 3.x 中毫无意义。
+**不要清空 `__id__` 然后手动逐个重绑——手动永远不完整。**
 
-正确做法：
+正确做法：在构建 3.x 节点时，同步建立 **2.x ID → 3.x ID** 的映射表，然后用映射表自动翻译组件中的所有 `__id__` 引用。
+
+```javascript
+// 构建映射表
+const idMap = new Map();
+// 在创建每个节点时记录：2.x 中 id=3(shadow) → 3.x 中 id=7(shadow)
+idMap.set(3, 7);
+idMap.set(5, 12);  // icon
+// ...每个节点和组件都记录
+
+// 翻译组件中的所有引用
+function translateIds(obj) {
+    if (obj?.__id__ !== undefined) {
+        obj.__id__ = idMap.get(obj.__id__) ?? obj.__id__;
+    }
+    if (Array.isArray(obj)) obj.forEach(translateIds);
+    if (typeof obj === 'object' && obj !== null) {
+        for (const v of Object.values(obj)) translateIds(v);
+    }
+}
+// 对每个组件执行翻译 → 所有 @property 绑定自动正确
+```
+
+**为什么不能用"手动逐个重绑"：**
+- 手动需要知道每个属性绑定到哪个节点 → 依赖记忆 → 必有遗漏
+- 清空后手动补 = 把已知信息丢掉再猜回来 → 本末倒置
+- 自动翻译 = 保留所有信息，只换寻址方式 → 零遗漏
+
+### 4.2 备选方法：逻辑关系绑定（仅用于跨文件引用）
+
+ID 映射表只能处理**同文件内**的引用。对于**跨文件引用**（如 scene 引用 prefab 中的组件），需要用逻辑关系：
+
 1. 从原版读出逻辑关系："SettlementUi.winNode 绑定到名叫 winNode 的子节点"
 2. 在 3.x 场景中按名字查找 winNode 节点
 3. 获取 3.x 中该节点的 ID
 4. 写入绑定
 
-### 4.2 属性类型决定绑定目标
-
+属性类型决定绑定目标：
 ```
 @property(Node) winNode     → 绑定到节点 ID
 @property(Sprite) playBar   → 绑定到节点上 Sprite 组件的 ID
 @property(Button) playAgainBtn → 绑定到节点上 Button 组件的 ID
-@property(Label) Lb_Per     → 绑定到节点上 Label 组件的 ID
-@property([Node]) items     → 绑定到节点 ID 数组
 ```
 
 ### 4.3 同名节点陷阱
@@ -306,7 +334,8 @@ const btn = parent._children.find(c => scene[c.__id__]._name === 'New Button');
 
 | 陷阱 | 表现 | 解决 |
 |------|------|------|
-| 复制 2.x `__id__` | 绑定指向错误节点 | 提取逻辑关系，按名字重新绑定 |
+| 复制 2.x `__id__` | 绑定指向错误节点 | 构建 ID 映射表自动翻译（不要手动逐个重绑） |
+| 清空 `__id__` 再手动补 | 永远补不全，总有属性遗漏 | 不清空，用映射表翻译 |
 | ClickEvent 缺 `_componentId` | 编辑器中组件和方法为空 | 添加脚本压缩 UUID |
 | 同名节点 | 绑定到孤立旧节点 | 通过 parent._children 确认在活跃树中 |
 | Canvas 在 (w/2,h/2) | 边界检查提前销毁子弹 | 用本地坐标计算 |
