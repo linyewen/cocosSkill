@@ -135,6 +135,25 @@ function translateIds(obj) {
 // 对每个组件执行翻译 → 所有 @property 绑定自动正确
 ```
 
+**ID 翻译的排除字段（关键！）：**
+
+以下字段是 3.x 构建时设置的，**不能**被 2.x ID 映射翻译：
+```javascript
+const EXCLUDE = ['node', '__prefab', '__editorExtras__'];
+// node → 组件所属的 3.x Node（构建时设置）
+// __prefab → 指向 CompPrefabInfo（3.x 新增，2.x 没有）
+// 翻译这些字段会导致：组件指向错误节点、prefab 无法打开
+```
+
+**重建 prefab 后的必要验证：**
+```
+- [ ] 所有组件的 node 指向 cc.Node 类型（不是脚本或 UITransform）
+- [ ] 所有组件的 __prefab 指向 cc.CompPrefabInfo
+- [ ] 所有节点的 _prefab 指向 cc.PrefabInfo
+- [ ] 无效 UUID 已清理（2.x UUID 不存在于 3.x 的设为 null）
+- [ ] 引用完整性 0 断裂
+```
+
 **为什么不能用"手动逐个重绑"：**
 - 手动需要知道每个属性绑定到哪个节点 → 依赖记忆 → 必有遗漏
 - 清空后手动补 = 把已知信息丢掉再猜回来 → 本末倒置
@@ -345,6 +364,7 @@ const btn = parent._children.find(c => scene[c.__id__]._name === 'New Button');
 | 修复脚本硬编码 ID | 节点移动后 ID 变了，脚本失效 | 动态查找 |
 | 编辑器打开时修改文件 | 保存时被覆盖 | 关闭编辑器再修改 |
 | diff 工具只检查 Canvas | 遗漏 Scene 级节点 | 从 Scene 根开始扫描 |
+| ID翻译了 `node`/`__prefab` 字段 | 组件指向错误节点、prefab 崩溃 | translateObj 排除 node/__prefab/__editorExtras__ |
 | 截断 prefab 数组 | "Open prefab failed" | 永远不截断，只增不删 |
 | prefab 节点缺 PrefabInfo | 编辑器无法解析 | 每个节点/组件都要有对应的 PrefabInfo/CompPrefabInfo |
 | scene 编辑经验套用到 prefab | 格式不同导致文件损坏 | 不同文件类型先研究格式再修改 |
