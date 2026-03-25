@@ -22,6 +22,23 @@
 - [ ] `view.getVisibleSize()` 用于边界判断时是否除以 2（屏幕原点在中心）
 - [ ] 每个 Layer 是否明确了坐标系归属（屏幕适配 or 地图适配）
 
+## 相机与渲染（3D 引擎基础 — 最优先检查）
+- [ ] Camera 和 Canvas 的 Z 坐标是否有距离（标准：Camera z=1000, Canvas z=0）
+- [ ] Camera near/far 范围是否覆盖 Canvas 所在 Z 平面（near=0 或 1，far≥1000）
+- [ ] Camera 节点在独立 Node 上、layer=DEFAULT(0x40000000)，不挂在 Canvas 上
+- [ ] Camera visibility 包含 UI_2D(0x2000000)
+- [ ] clearFlags 选择合理：纯2D用 DEPTH_ONLY(6)，不需要 SKYBOX
+- [ ] **黑屏排查第一步**：画出相机视锥体，确认 Canvas/UI 在视锥体内
+- [ ] **修改场景前**：先 diff 已有成功项目的相机配置，不凭假设改
+
+## UI 布局
+- [ ] icon 的 sizeMode 是否为 TRIMMED（保持原始像素，不改 scale）
+- [ ] label fontSize 是否从相邻 icon 高度推导（≈ icon 高度 × 0.7~0.8）
+- [ ] 边角/边缘 UI 是否用 Widget 锚定（不写死坐标）
+- [ ] 定位后子节点是否溢出屏幕边界
+- [ ] 相邻元素包围盒是否重叠
+- [ ] 背景图的几何结构是否作为布局参考
+
 ## 碰撞系统（3D 物理）
 - [ ] 碰撞类型判断用 `getComponent(ClassName)` 不用 `getGroup()`
 - [ ] RigidBody `_type=4`（KINEMATIC），不是 2（STATIC）
