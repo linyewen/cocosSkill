@@ -1,91 +1,94 @@
 # 创建游戏对象工作流
 
-当需要创建任何新的游戏对象时（敌人变种、道具、特效标记、UI元素等），**必须**按以下流程执行，不能跳步。
+当需要创建任何新的游戏对象时，先用面向对象思维分析，再动手。
 
 ---
 
-## Step 0: 判断 — 需要 prefab 吗？
+## Step 0: 分析 — 这个游戏实体是什么？
+
+用一句话描述它的**逻辑**和**视觉**：
 
 ```
-这个东西在游戏画面中看得见吗？
-  → 是 → 必须 prefab（继续 Step 1）
-  → 否（纯逻辑容器）→ 可以 new Node()，流程结束
+[名称]（游戏实体）
+  ├── 逻辑：它是什么？有什么行为？
+  └── 视觉：它看起来像什么？
 ```
 
-## Step 1: 设计节点结构
-
-**根节点 = 逻辑，子节点 = 视觉。没有例外。**
-
+例：
 ```
-简单游戏对象：
-XxxPrefab (UITransform [+ 脚本])
-  └── icon (UITransform + Sprite)
+WallBrick（墙砖）
+  ├── 逻辑：可破坏的障碍物，被打爆后概率掉落道具
+  └── 视觉：灰蓝色的敌机图缩小版
 
-复杂游戏对象：
-XxxPrefab (UITransform + 脚本 + RigidBody + Collider)
-  ├── icon (Sprite)        ← 主视觉
-  ├── shadow (Sprite)      ← 可选
-  └── effect (Node)        ← 特效容器
+TrackBullet（追踪分裂弹）
+  ├── 逻辑：自动追踪最近敌人，命中后分裂
+  └── 视觉：橙色小子弹
 ```
 
-决策：
-- 需要脚本控制？→ 根节点挂脚本
-- 需要碰撞？→ 根节点挂 RigidBody + Collider
-- 有多层视觉？→ 每层一个子节点（icon/shadow/effect）
-- 只有一个视觉？→ 一个 icon 子节点就够
+如果说不清"它是什么" → 可能不需要独立实体，考虑复用已有 prefab。
+如果"看不见" → 纯逻辑容器，可以 new Node()，不需要 prefab。
 
-## Step 2: 在编辑器/MCP 中创建
+## Step 1: 设计 — 逻辑和视觉怎么分离？
 
-1. **创建根节点** → layer = UI_2D (33554432)
-2. **创建 icon 子节点** → 挂 Sprite → 设 spriteFrame + color + sizeMode
-3. **调整根节点** scale/UITransform contentSize
-4. **保存为 prefab** → 放在合适的目录
+**逻辑在根节点，视觉在子节点。** 这是面向对象的单一职责原则在引擎中的体现。
 
-目录规则：
-- 编辑器拖拽引用 → `assets/prefab/功能模块/`
+```
+XxxPrefab（根节点 = 这个实体的逻辑身份）
+  ├── UITransform（空间属性）
+  ├── [可选] 脚本组件（行为）
+  └── [可选] 碰撞体（物理交互）
+
+  └── icon（子节点 = 这个实体的视觉表现）
+      ├── UITransform
+      └── Sprite（贴图 + 颜色 + 大小）
+```
+
+为什么这样：
+- 改外观 → 只改 icon，逻辑不受影响
+- 做动画 → 只动 icon（闪白/缩放/旋转），碰撞体不变
+- 换皮 → 换 icon 的 spriteFrame，脚本不用改
+- 多层视觉 → 加更多子节点（shadow/effect），互不干扰
+
+## Step 2: 创建 — 在编辑器/MCP 中完成外观
+
+**编辑器负责"看起来像什么"，代码负责"怎么动"。**
+
+1. 创建根节点 → layer = UI_2D (33554432)
+2. 创建 icon 子节点 → 挂 Sprite → 选贴图 → 调颜色/大小
+3. 保存为 prefab
+
+目录：
+- 编辑器拖拽引用 → `assets/prefab/模块/`
 - 代码动态加载 → `assets/resources/prefab/`
 
-## Step 3: 代码中使用
+## Step 3: 使用 — 代码只管实例化和行为
 
 ```typescript
-// 方式A：@property 绑定（推荐，编辑器拖拽）
-@property(Prefab)
-wallBrickPrefab: Prefab = null;
+// 创建实体
+const brick = instantiate(this.wallBrickPrefab);
+container.addChild(brick);
+brick.setPosition(x, y, 0);
 
-// 方式B：resources 动态加载
-resources.load('prefab/WallBrickPrefab', Prefab, (err, prefab) => { ... });
-
-// 创建实例
-const node = instantiate(this.wallBrickPrefab);
-node.layer = 33554432;  // UI_2D
-parentContainer.addChild(node);
-node.setPosition(x, y, 0);
-
-// 运行时改视觉（如需要）
-const icon = node.getChildByName('icon');
-const sprite = icon.getComponent(Sprite);
-sprite.spriteFrame = newFrame;
-sprite.color = new Color(255, 0, 0);
+// 需要改外观时，通过 icon 子节点
+const icon = brick.getChildByName('icon');
+icon.getComponent(Sprite).color = new Color(255, 0, 0);
 ```
 
-## Step 4: 自检
+## 自检
 
 ```
-□ Sprite 在 icon 子节点，不在根节点
-□ layer = 33554432 (UI_2D)
-□ spriteFrame 已设置（不是 null）
-□ 视觉在编辑器中设好，代码只管 instantiate + 行为
-□ 多次创建的对象用 instantiate，不是反复 new Node
+□ 我能用一句话说清它的逻辑和视觉吗？
+□ 逻辑和视觉是分开的吗？（改外观不影响行为）
+□ 外观是在编辑器设好的，还是代码拼的？
+□ 用的是 instantiate(prefab)，还是 new Node()？
 ```
 
 ---
 
-## 常见错误 → 正确做法
+## 错误 vs 正确
 
-| 错误 | 正确 |
-|------|------|
-| `new Node()` + `addComponent(Sprite)` | 编辑器建 prefab → `instantiate()` |
-| `addComponent(Graphics)` + `circle()` 画圆 | Sprite + 圆形贴图/已有贴图 tint |
-| Sprite 直接挂根节点 | Sprite 挂 icon 子节点 |
-| 代码设 spriteFrame + color + size | 编辑器/MCP 预设好，代码只定位 |
-| `createMarker(x,y,r,g,b)` 万能函数 | 每种对象一个专属 prefab |
+| 思维方式 | 做法 | 问题 |
+|---------|------|------|
+| Web思维 | `new Node()` + `addComponent(Graphics)` + 画圆 | 不是游戏实体，是画图代码 |
+| 背步骤 | "Sprite 放子节点" | 换个场景就忘了 |
+| **面向对象** | "这个实体的逻辑是X，视觉是Y，所以分开" | **理解了就不会忘** |
