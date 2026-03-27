@@ -12,6 +12,13 @@
 - [ ] 视觉子节点是否挂了对应渲染组件（icon→Sprite, label→Label）
 - [ ] `new Node()` 是否是最后手段（优先 prefab/instantiate）
 
+## Prefab 优先（红线）
+- [ ] **所有"看得见"的游戏对象**是否都通过 `instantiate(prefab)` 创建，而非 `new Node()` + `addComponent()`
+- [ ] 动态生成的可见节点（墙砖/弹幕/残骸/追踪弹/火焰/黑洞/护盾等）是否都有对应的 Prefab
+- [ ] Prefab 是否在编辑器/MCP 中设好了视觉（Sprite+贴图+颜色），而不是在代码中用 Graphics 画
+- [ ] 代码是否只负责 instantiate + setPosition + 行为逻辑，不负责"长什么样"
+- [ ] 有没有 `addComponent(Graphics)` + `circle/rect/fill` 来创建游戏视觉？→ 应改为 Prefab
+
 ## 生命周期
 - [ ] 回调函数体是否完整实现（不能是注释掉的代码或空桩）
 - [ ] 碰撞注册在 onLoad，注销在 onDestroy
