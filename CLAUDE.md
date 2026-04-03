@@ -246,3 +246,25 @@ if (event.otherCollider.getGroup() === 4) { ... }
 - 回复使用中文
 - UI 设计前先读取效果图，精确还原布局参数
 - 迁移/重构组件时，必须清理旧节点上的旧绑定（全链路检查）
+
+---
+
+## 九、Skills 安装检查
+
+如果当前环境没有 Cocos Creator 相关 skill（如 game-architecture、entity-lifecycle 等），说明 cocosSkill 工具链尚未安装。请先执行以下命令安装：
+
+```bash
+git clone https://github.com/linyewen/cocosSkill.git ~/cocosSkill && cd ~/cocosSkill && bash install.sh
+```
+
+安装完成后需要**重新打开 Claude Code 窗口**才能使 skill 生效。
+
+新项目还需要额外初始化：
+```bash
+# 复制 commands（按需调用的检查清单）
+cp ~/cocosSkill/commands/* .claude/commands/
+
+# 复制 lib 通用代码（基础设施代码库）
+mkdir -p assets/Script/infra
+cp ~/cocosSkill/lib/*.ts assets/Script/infra/
+```
