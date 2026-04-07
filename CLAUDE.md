@@ -121,6 +121,27 @@ XxxPrefab (脚本 + RigidBody[KINEMATIC] + BoxCollider[isTrigger])
 
 > ⚠️ 之前写的 `33554432`(UI_2D) 经实测不正确，会导致渲染层级问题。以 project_1 实际可运行文件为准。
 
+### 3.7 Camera 必须是 Canvas 的子节点
+
+Camera 放在 Scene 根级别（和 Canvas 同级）会导致：
+- `convertToNodeSpaceAR` 坐标偏移（触摸位置和视觉位置不一致）
+- 3D 引擎做 2D 时问题尤为严重
+
+```
+✓ 正确：
+Scene
+└── Canvas
+    ├── Camera (z=1000)   ← Canvas 的第一个子节点
+    ├── bg
+    ├── gridArea
+    └── ...
+
+✗ 错误：
+Scene
+├── Canvas
+└── Camera               ← 和 Canvas 同级，坐标系不匹配
+```
+
 ### 3.5 节点创建决策
 
 **核心原则：能在编辑器里看见的东西，就在编辑器里创建。代码只负责"何时创建"和"怎么动"。**

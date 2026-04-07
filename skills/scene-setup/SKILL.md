@@ -6,7 +6,7 @@
 
 | # | 错误 | 后果 | 正确做法 |
 |---|------|------|---------|
-| 1 | Camera 创建为 2DNode | Z 轴被忽略，相机在 z=0 看不到任何东西 | Camera 必须是 **3DNode**，通过改场景文件设 z=1000 |
+| 1 | Camera 创建为 2DNode 或放在 Scene 根级别 | Z 轴被忽略/坐标偏移 | Camera 必须是 **3DNode**，且必须是 **Canvas 的子节点**（不能和 Canvas 同级），z=1000 |
 | 2 | Camera 没设正交投影 | 透视投影下 2D UI 变形 | projection=**0** (ORTHO), orthoHeight=designH/2。注意枚举：ORTHO=0, PERSPECTIVE=1，别写反！ |
 | 3 | Canvas._cameraComponent 没绑 Camera | 黑屏，什么都渲染不出 | 通过场景文件 `__id__` 绑定 |
 | 4 | Canvas Widget alignFlags=0 | Canvas 不适配屏幕 | alignFlags=45（上下左右全适配） |
@@ -182,3 +182,20 @@ if errors:
 else:
     print("ALL CHECKS PASSED")
 ```
+
+## 场景生成后自检清单（project_2 实战总结）
+
+每次生成或修改场景 JSON 后，必须逐项检查：
+
+| # | 检查项 | 判断方法 |
+|---|--------|---------|
+| 1 | Camera 是 Canvas 的**子节点** | Camera._parent.__id__ 指向 Canvas |
+| 2 | Canvas 有 Widget(_alignFlags=45) | Canvas._components 包含 cc.Widget |
+| 3 | 全屏容器有 Widget | bg/damageContainer/fxLayer/gameOverLayer 都有 cc.Widget |
+| 4 | @property(Component) 指向组件 | Label/Sprite/自定义脚本的 __id__ 指向组件，不是节点 |
+| 5 | @property(Node) 指向节点 | Node 类型的 __id__ 指向 cc.Node |
+| 6 | 所有节点 _layer = 1073741824 | 不是 33554432 |
+| 7 | Camera._orthoHeight = designH/2 | 600×1160 → orthoHeight=580 |
+| 8 | Canvas._cameraComponent 指向 Camera | __id__ 指向 cc.Camera 组件 |
+| 9 | Scene 只有 Canvas 一个子节点 | Camera 不应该在 Scene._children 里 |
+| 10 | refresh_assets 后重新 open_scene | 编辑器有缓存，不重新打开看到的是旧的 |
