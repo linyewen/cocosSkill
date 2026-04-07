@@ -31,28 +31,40 @@
 
 ### 第 1 步：创建 Canvas + Camera
 
+**Camera 必须是 Canvas 的子节点（不能和 Canvas 同级在 Scene 下）！**
+
 ```
-Canvas: 2DNode, 挂 cc.Canvas + cc.Widget(alignFlags=45)
-Camera: 3DNode, 挂 cc.Camera
+Scene
+└── Canvas: 2DNode, 挂 cc.Canvas + cc.Widget(alignFlags=45)
+    ├── Camera: 3DNode, 挂 cc.Camera  ← Canvas 的第一个子节点
+    ├── BgLayer
+    └── ...
 ```
 
 Camera 配置（通过改场景 JSON）：
-- `_lpos`: `{x: designW/2, y: designH/2, z: 1000}`
+- `_lpos`: `{x: 0, y: 0, z: 1000}` ← 作为 Canvas 子节点时用 (0,0,1000)
 - `_projection`: **0** (正交/ORTHO，注意 0=ORTHO，1=PERSPECTIVE，别写反！)
 - `_orthoHeight`: designH/2
 - `_far`: 2000
 - Canvas `_cameraComponent`: `{__id__: Camera组件索引}`
 
+> ⚠️ 旧版写的 Camera 位置 `designW/2, designH/2` 是 Camera 在 Scene 根级别时的值，Camera 作为 Canvas 子节点时必须用 `0, 0, 1000`。
+
 ### 第 2 步：创建层级 + Widget
 
 ```
 Canvas
+├── Camera     (第1步已创建)
 ├── BgLayer    (Sprite bg.png + Widget flags=45)
-├── GameLayer  (无Widget，可能需要移动)
+├── GameLayer  (无Widget，固定大小的游戏区域)
 ├── UILayer    (Widget flags=45)
+├── DamageContainer (Widget flags=45，飘字容器)
+├── FxLayer    (Widget flags=45，特效容器)
 ├── GuideLayer (Widget flags=45)
 └── PopupLayer (Widget flags=45)
 ```
+
+**判断是否需要 Widget：** 全屏覆盖/跟随屏幕的容器 → 加 Widget(45)。固定大小的游戏区域（如网格） → 不加。
 
 BgLayer 的 Sprite：sizeMode=0, contentSize=designW×designH, spriteFrame=bg.png
 

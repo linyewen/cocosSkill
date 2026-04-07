@@ -310,7 +310,42 @@ if (event.otherCollider.getGroup() === 4) { ... }
 
 ---
 
-## 十、交互规则
+## 十、工程纪律（project_1/2 血泪教训）
+
+### 10.1 验证优先原则
+
+**Skill 文档中的每个技术值必须有实测来源，不能靠推理。**
+
+| ❌ 推理做法 | ✅ 正确做法 |
+|------------|-----------|
+| "2D 游戏应该用 UI_2D 层" → 写 33554432 | 读 project_1 的 .scene 文件 → 发现是 1073741824 |
+| "@property 应该指向节点" → 代码里写节点 __id__ | 读 project_1 的 .scene 文件 → 发现指向组件 __id__ |
+| "Camera 和 Canvas 同级应该也行" → 放在 Scene 下 | 读 project_1 的 .scene 文件 → 发现 Camera 是 Canvas 子节点 |
+
+**规则：写任何 JSON 模板前，先 `cat` 一个已验证项目的同类文件，提取真实值。**
+
+### 10.2 生成后自检
+
+生成 scene/prefab JSON 后，必须跑 `/scene-setup` 末尾的 10 项自检清单。不跑自检直接交付 = 未完成。
+
+### 10.3 复用即审查
+
+复制其他项目的脚本不是"拿来就用"，必须做架构审查（见 `/new-game` 3.0 步骤）。project_2 的音效问题就是无脑复制 project_1 导致的。
+
+### 10.4 Skill 修改必须回流
+
+修改了 `~/.claude/skills/` 或 `CLAUDE.md` 后，必须同步回 cocosSkill 仓库并 push。否则下个项目还会踩同样的坑。
+
+**回流流程：**
+```
+1. 改 ~/.claude/skills/xxx/SKILL.md 或 ~/.claude/CLAUDE.md
+2. cp 到 /e/temp/cocosSkill/
+3. cd /e/temp/cocosSkill && git add . && git commit && git push
+```
+
+---
+
+## 十一、交互规则
 
 - 回复使用中文
 - UI 设计前先读取效果图，精确还原布局参数
@@ -318,7 +353,7 @@ if (event.otherCollider.getGroup() === 4) { ... }
 
 ---
 
-## 十一、Skills 安装检查
+## 十二、Skills 安装检查
 
 如果当前环境没有 Cocos Creator 相关 skill（如 game-architecture、entity-lifecycle 等），说明 cocosSkill 工具链尚未安装。请先执行以下命令安装：
 
