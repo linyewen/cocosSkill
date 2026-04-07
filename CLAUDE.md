@@ -115,9 +115,11 @@ XxxPrefab (脚本 + RigidBody[KINEMATIC] + BoxCollider[isTrigger])
 
 | 节点类型 | _layer 值 | 说明 |
 |---------|-----------|------|
-| Canvas 及所有 UI 子节点 | `33554432` | UI_2D 层 |
-| Camera 节点 | `1073741824` | Layer 31，特殊层 |
-| Prefab 中所有节点 | `33554432` | 和 Scene 中 UI 节点一致 |
+| Canvas 及所有 UI 子节点 | `1073741824` | DEFAULT 层（project_1 实测验证） |
+| Camera 节点 | `1073741824` | 同上 |
+| Prefab 中所有节点 | `1073741824` | 和 Scene 中节点一致 |
+
+> ⚠️ 之前写的 `33554432`(UI_2D) 经实测不正确，会导致渲染层级问题。以 project_1 实际可运行文件为准。
 
 ### 3.5 节点创建决策
 

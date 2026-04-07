@@ -538,11 +538,12 @@ Enemy:   _group = 8   (1 << 3)
 
 | 字段 | 陷阱 | 正确做法 |
 |------|------|---------|
-| `__type__` | 压缩 UUID，不是类名 | `node tools/cc-uuid.js --uuid <uuid>` 获取 |
-| `@property(Node)` 引用 | 值是 `{"__id__": N}` 指向同 prefab 内的节点 | N 是目标节点在数组中的下标 |
-| `@property(Prefab)` 引用 | 值是 `{"__uuid__": "...", "__expectedType__": "cc.Prefab"}` | UUID 指向另一个 prefab 资源 |
+| `__type__` | 压缩 UUID 或完整 UUID，不是类名 | MCP attach_script 获取压缩格式，或从 .meta 读完整 UUID |
+| `@property(Node)` | 值是 `{"__id__": N}` | N 是目标**节点**在数组中的下标 |
+| `@property(Component)` | 值是 `{"__id__": N}` | **N 是目标组件在数组中的下标（不是节点！）** |
+| `@property(Prefab)` | 值是 `{"__uuid__": "...", "__expectedType__": "cc.Prefab"}` | UUID 指向另一个 prefab 资源 |
 | `@property(SpriteFrame)` | 值是 `{"__uuid__": "...@f9941", "__expectedType__": "cc.SpriteFrame"}` | 注意 @f9941 后缀 |
-| 数组类型的 @property | 值是 `[{"__id__": N1}, {"__id__": N2}]` | 每个元素独立引用 |
+| 数组类型的 @property | 值是 `[{"__id__": N1}, {"__id__": N2}]` | Node 数组指节点，Component 数组指组件 |
 
 ## Prefab vs Scene 的区别
 
@@ -552,7 +553,7 @@ Enemy:   _group = 8   (1 << 3)
 | 根节点 `__type__` | `cc.Node` | `cc.Scene` |
 | `_prefab` 字段 | 有值（指向 PrefabInfo） | `null` |
 | `__prefab` 字段 | 组件上有（CompPrefabInfo） | 组件上没有 |
-| 节点的 `_layer` | `33554432`（UI_2D） | `1073741824` |
+| 节点的 `_layer` | `1073741824`（实测） | `1073741824` |
 | 额外字段 | — | `_globals`、`autoReleaseAssets` |
 
 ## 新资源创建后的必要步骤
@@ -621,15 +622,15 @@ print(compress_uuid("911d1e2b-20ab-4210-9891-2fcabf83bc65"))
 
 Python 批量脚本参见 scene-setup skill。
 
-### _layer 值规则（三个真实项目验证）
+### _layer 值规则（project_1 实测验证，修正旧版错误）
 
 | 节点类型 | _layer 值 | 说明 |
 |---------|-----------|------|
-| Scene 中 Canvas 及所有 UI 子节点 | `33554432` | UI_2D 层 |
-| Scene 中 Camera 节点 | `1073741824` | Layer 31，特殊层 |
-| Prefab 中所有节点 | `33554432` | UI_2D 层 |
+| Scene 中 Canvas 及所有 UI 子节点 | `1073741824` | DEFAULT 层 |
+| Scene 中 Camera 节点 | `1073741824` | 同上 |
+| Prefab 中所有节点 | `1073741824` | 同上 |
 
-**混用会导致渲染层级错误。**
+> ⚠️ 旧版写的 `33554432`(UI_2D) 经 project_1 和 project_2 实测均不正确。统一用 `1073741824`。
 
 ## Scene 完整骨架模板
 
@@ -835,22 +836,26 @@ AudioClip 引用格式：
 
 | TypeScript 声明 | JSON 格式 | 说明 |
 |----------------|-----------|------|
-| `@property(Node)` | `{"__id__": N}` | N = 目标节点在数组中的下标 |
-| `@property(Label)` | `{"__id__": N}` | **N 是节点的下标**，系统自动找组件 |
-| `@property(Sprite)` | `{"__id__": N}` | 同上，不是组件的下标 |
-| `@property(ProgressBar)` | `{"__id__": N}` | 同上 |
+| `@property(Node)` | `{"__id__": N}` | N = 目标**节点**在数组中的下标 |
+| `@property(Label)` | `{"__id__": N}` | **N 是 cc.Label 组件的下标**（不是节点！） |
+| `@property(Sprite)` | `{"__id__": N}` | **N 是 cc.Sprite 组件的下标** |
+| `@property(ProgressBar)` | `{"__id__": N}` | **N 是 cc.ProgressBar 组件的下标** |
+| `@property(自定义脚本)` | `{"__id__": N}` | **N 是脚本组件的下标**（如 GridManager） |
 | `@property(Prefab)` | `{"__uuid__":"...","__expectedType__":"cc.Prefab"}` | 外部资源用 UUID |
 | `@property(SpriteFrame)` | `{"__uuid__":"...@f9941","__expectedType__":"cc.SpriteFrame"}` | 注意 @f9941 |
 | `@property(AudioClip)` | `{"__uuid__":"...","__expectedType__":"cc.AudioClip"}` | 无子资源后缀 |
 | `@property(cc.TTFFont)` | `{"__uuid__":"...","__expectedType__":"cc.TTFFont"}` | 自定义字体 |
-| `@property([Node])` | `[{"__id__":N1},{"__id__":N2}]` | 数组 |
+| `@property([Node])` | `[{"__id__":N1},{"__id__":N2}]` | 数组，每个 N 是节点下标 |
 | `@property([SpriteFrame])` | `[{"__uuid__":"..@f9941",...},...]` | 数组 |
 | `@property(number)` | `42` 或 `3.14` | 直接值 |
 | `@property(string)` | `"hello"` | 直接值 |
 | `@property(boolean)` | `true` / `false` | 直接值 |
 
-**⚠️ 关键：@property(Component类型) 的值是节点的 __id__，不是组件的 __id__！**
-系统会在该节点上自动查找对应类型的组件。
+**⚠️ 关键规则（project_1 实测验证）：**
+- **`@property(Component类型)` 的值是该组件的 __id__，不是节点的 __id__！**
+- **`@property(Node)` 的值才是节点的 __id__**
+- 示例：`@property(Label) timerLabel` → `{"__id__": 30}` 其中 `[30]` 是 `cc.Label` 组件
+- 示例：`@property(Node) fxLayer` → `{"__id__": 38}` 其中 `[38]` 是 `cc.Node` 节点
 
 ## 实战使用模式（从三个真实项目统计）
 
@@ -908,6 +913,6 @@ _sizeMode=0 (CUSTOM) 最安全，配合 UITransform 手动设尺寸。
 | Label 不显示 | `_string` 是否为空？`_color` 的 alpha 是否为 0？ |
 | Widget 布局错 | `_alignFlags` 位运算是否正确？`alignMode` 是否为 1？ |
 | 物体往下掉 | `gravityScale` 是否为 0？ |
-| 节点不出现 | `_active` 是否为 true？`_layer` 是否正确（33554432 = UI_2D）？ |
+| 节点不出现 | `_active` 是否为 true？`_layer` 是否正确（1073741824）？ |
 | __id__ 报错 | 增删元素后是否重算了所有 __id__？ |
 | 自定义脚本无效 | `__type__` 用的是压缩 UUID 吗？是否刷新了编辑器？ |
