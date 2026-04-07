@@ -621,11 +621,282 @@ print(compress_uuid("911d1e2b-20ab-4210-9891-2fcabf83bc65"))
 
 Python 批量脚本参见 scene-setup skill。
 
-### Prefab 中 _layer 值
+### _layer 值规则（三个真实项目验证）
 
-- Scene 中的节点：`_layer: 1073741824`
-- Prefab 中的节点：`_layer: 33554432`（UI_2D）
-- **混用会导致渲染层级错误**
+| 节点类型 | _layer 值 | 说明 |
+|---------|-----------|------|
+| Scene 中 Canvas 及所有 UI 子节点 | `33554432` | UI_2D 层 |
+| Scene 中 Camera 节点 | `1073741824` | Layer 31，特殊层 |
+| Prefab 中所有节点 | `33554432` | UI_2D 层 |
+
+**混用会导致渲染层级错误。**
+
+## Scene 完整骨架模板
+
+```json
+[
+  { "__type__": "cc.SceneAsset", "_name": "GameScene", "scene": { "__id__": 1 } },
+  {
+    "__type__": "cc.Scene", "_name": "GameScene",
+    "_parent": null,
+    "_children": [{ "__id__": 2 }],
+    "_active": true, "_components": [],
+    "_prefab": null,
+    "_lpos": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
+    "_lrot": { "__type__": "cc.Quat", "x": 0, "y": 0, "z": 0, "w": 1 },
+    "_lscale": { "__type__": "cc.Vec3", "x": 1, "y": 1, "z": 1 },
+    "_mobility": 0, "_layer": 1073741824,
+    "_euler": { "__type__": "cc.Vec3", "x": 0, "y": 0, "z": 0 },
+    "autoReleaseAssets": false,
+    "_globals": { "__id__": N },
+    "_id": "场景UUID"
+  },
+  // [2] Canvas 节点 ...
+  // [3] Camera 节点 ...
+  // [4] cc.Camera 组件 ...
+  // ... 游戏节点 ...
+  // [N] cc.SceneGlobals + 8个子对象（见下方）
+]
+```
+
+### cc.SceneGlobals 标准模板（直接复制，不需要改）
+
+```json
+{ "__type__": "cc.SceneGlobals",
+  "ambient": {"__id__": "N+1"}, "shadows": {"__id__": "N+2"},
+  "_skybox": {"__id__": "N+3"}, "fog": {"__id__": "N+4"},
+  "octree": {"__id__": "N+5"}, "skin": {"__id__": "N+6"},
+  "lightProbeInfo": {"__id__": "N+7"}, "postSettings": {"__id__": "N+8"},
+  "bakedWithStationaryMainLight": false, "bakedWithHighpLightmap": false
+},
+{ "__type__": "cc.AmbientInfo",
+  "_skyColorHDR": {"__type__":"cc.Vec4","x":0,"y":0,"z":0,"w":0.520833125},
+  "_skyColor": {"__type__":"cc.Vec4","x":0,"y":0,"z":0,"w":0.520833125},
+  "_skyIllumHDR": 20000, "_skyIllum": 20000,
+  "_groundAlbedoHDR": {"__type__":"cc.Vec4","x":0,"y":0,"z":0,"w":0},
+  "_groundAlbedo": {"__type__":"cc.Vec4","x":0,"y":0,"z":0,"w":0},
+  "_skyColorLDR": {"__type__":"cc.Vec4","x":0.2,"y":0.5,"z":0.8,"w":1},
+  "_skyIllumLDR": 20000,
+  "_groundAlbedoLDR": {"__type__":"cc.Vec4","x":0.2,"y":0.2,"z":0.2,"w":1}
+},
+{ "__type__": "cc.ShadowsInfo", "_enabled": false, "_type": 0 },
+{ "__type__": "cc.SkyboxInfo", "_enabled": false, "_envmapHDR": null, "_envmapLDR": null, "_rotationAngle": 0 },
+{ "__type__": "cc.FogInfo", "_enabled": false, "_fogDensity": 0.3, "_fogStart": 0.5, "_fogEnd": 300 },
+{ "__type__": "cc.OctreeInfo", "_enabled": false, "_minPos": {"__type__":"cc.Vec3","x":-1024,"y":-1024,"z":-1024}, "_maxPos": {"__type__":"cc.Vec3","x":1024,"y":1024,"z":1024}, "_depth": 8 },
+{ "__type__": "cc.SkinInfo", "_enabled": false },
+{ "__type__": "cc.LightProbeInfo", "_giScale": 1, "_giSamples": 1024, "_bounces": 2 },
+{ "__type__": "cc.PostSettingsInfo", "_toneMappingType": 0 }
+```
+
+## cc.Camera 完整模板
+
+```json
+{
+  "__type__": "cc.Camera",
+  "_name": "", "_objFlags": 0, "__editorExtras__": {},
+  "node": { "__id__": 3 },
+  "_enabled": true, "__prefab": null,
+  "_projection": 0,
+  "_priority": 0,
+  "_fov": 45,
+  "_fovAxis": 0,
+  "_orthoHeight": 580,
+  "_near": 0,
+  "_far": 2000,
+  "_color": { "__type__": "cc.Color", "r": 0, "g": 0, "b": 0, "a": 255 },
+  "_depth": 1,
+  "_stencil": 0,
+  "_clearFlags": 7,
+  "_rect": { "__type__": "cc.Rect", "x": 0, "y": 0, "width": 1, "height": 1 },
+  "_aperture": 19,
+  "_shutter": 7,
+  "_iso": 0,
+  "_screenScale": 1,
+  "_visibility": 1108344832,
+  "_targetTexture": null,
+  "_postProcess": null,
+  "_usePostProcess": false,
+  "_cameraType": -1,
+  "_trackingType": 0,
+  "_id": ""
+}
+```
+
+### Camera 关键字段说明
+
+| 字段 | 值 | 说明 |
+|------|-----|------|
+| `_projection` | `0` | **0=ORTHO（正交）**，1=PERSPECTIVE（透视）。2D 游戏必须用 0 |
+| `_orthoHeight` | designH/2 | 设计高度的一半。600×1160 → 580 |
+| `_near` | `0` | 近裁剪面 |
+| `_far` | `2000` | 远裁剪面，必须 > Camera 的 z 值 |
+| `_clearFlags` | `7` | 7=全清除(COLOR+DEPTH+STENCIL)，6=不清颜色，14=不清模板 |
+| `_visibility` | `1108344832` | 层渲染掩码，一般不改 |
+| Camera 节点 z | `1000` | 必须 > 0 才能看到 2D 内容 |
+
+## cc.Canvas 组件
+
+```json
+{
+  "__type__": "cc.Canvas",
+  "_name": "", "_objFlags": 0, "__editorExtras__": {},
+  "node": { "__id__": 2 },
+  "_enabled": true, "__prefab": null,
+  "_cameraComponent": { "__id__": 4 },
+  "_alignCanvasWithScreen": true,
+  "_id": ""
+}
+```
+
+**关键：`_cameraComponent` 必须指向 cc.Camera 组件的 `__id__`，否则黑屏。**
+
+## cc.ProgressBar 完整结构
+
+ProgressBar 需要父节点 + Bar 子节点配合：
+
+```
+ProgressBar (UITransform + Sprite背景 + cc.ProgressBar)
+└── Bar (UITransform + Sprite填充)
+```
+
+### 父节点的 ProgressBar 组件
+
+```json
+{
+  "__type__": "cc.ProgressBar",
+  "_name": "", "_objFlags": 0, "__editorExtras__": {},
+  "node": { "__id__": N },
+  "_enabled": true, "__prefab": null,
+  "_barSprite": { "__id__": BAR_SPRITE_ID },
+  "_mode": 0,
+  "_totalLength": 300,
+  "_progress": 1,
+  "_reverse": false,
+  "_id": ""
+}
+```
+
+### Bar 子节点关键设置
+
+| 属性 | 值 | 原因 |
+|------|-----|------|
+| UITransform.anchorPoint | `(0, 0.5)` | **必须左对齐**，进度从左往右增长 |
+| position.x | `-totalLength/2` | 和父节点左边缘对齐 |
+| Sprite._type | `1` (SLICED) | 九宫格拉伸不变形 |
+| Sprite._sizeMode | `0` (CUSTOM) | ProgressBar 控制宽度 |
+
+### 常见陷阱
+
+| 问题 | 原因 | 修复 |
+|------|------|------|
+| 进度条不动 | Bar Sprite._type=3(FILLED) | 改为 0(SIMPLE) 或 1(SLICED) |
+| 进度条方向反 | _reverse 或 anchor 设错 | anchor.x=0, _reverse=false |
+| 进度条超出背景 | _totalLength ≠ 父节点宽度 | 保持一致 |
+
+## cc.AudioSource
+
+```json
+{
+  "__type__": "cc.AudioSource",
+  "_name": "", "_objFlags": 0, "__editorExtras__": {},
+  "node": { "__id__": N },
+  "_enabled": true, "__prefab": null,
+  "_clip": null,
+  "_loop": false,
+  "_playOnAwake": false,
+  "_volume": 1,
+  "_id": ""
+}
+```
+
+AudioClip 引用格式：
+```json
+"_clip": {
+  "__uuid__": "87e5f91a-4420-40fb-818d-3fe2581e2b7b",
+  "__expectedType__": "cc.AudioClip"
+}
+```
+
+## cc.BlockInputEvents
+
+最简组件，用于模态弹窗阻断底层输入：
+
+```json
+{
+  "__type__": "cc.BlockInputEvents",
+  "_name": "", "_objFlags": 0, "__editorExtras__": {},
+  "node": { "__id__": N },
+  "_enabled": true, "__prefab": null,
+  "_id": ""
+}
+```
+
+## @property 绑定全变体速查
+
+| TypeScript 声明 | JSON 格式 | 说明 |
+|----------------|-----------|------|
+| `@property(Node)` | `{"__id__": N}` | N = 目标节点在数组中的下标 |
+| `@property(Label)` | `{"__id__": N}` | **N 是节点的下标**，系统自动找组件 |
+| `@property(Sprite)` | `{"__id__": N}` | 同上，不是组件的下标 |
+| `@property(ProgressBar)` | `{"__id__": N}` | 同上 |
+| `@property(Prefab)` | `{"__uuid__":"...","__expectedType__":"cc.Prefab"}` | 外部资源用 UUID |
+| `@property(SpriteFrame)` | `{"__uuid__":"...@f9941","__expectedType__":"cc.SpriteFrame"}` | 注意 @f9941 |
+| `@property(AudioClip)` | `{"__uuid__":"...","__expectedType__":"cc.AudioClip"}` | 无子资源后缀 |
+| `@property(cc.TTFFont)` | `{"__uuid__":"...","__expectedType__":"cc.TTFFont"}` | 自定义字体 |
+| `@property([Node])` | `[{"__id__":N1},{"__id__":N2}]` | 数组 |
+| `@property([SpriteFrame])` | `[{"__uuid__":"..@f9941",...},...]` | 数组 |
+| `@property(number)` | `42` 或 `3.14` | 直接值 |
+| `@property(string)` | `"hello"` | 直接值 |
+| `@property(boolean)` | `true` / `false` | 直接值 |
+
+**⚠️ 关键：@property(Component类型) 的值是节点的 __id__，不是组件的 __id__！**
+系统会在该节点上自动查找对应类型的组件。
+
+## 实战使用模式（从三个真实项目统计）
+
+### Label 实战模式
+
+| 特征 | 最常用值 | 说明 |
+|------|---------|------|
+| _lineHeight | = _fontSize | 1:1 比例，不要设为 0 |
+| _enableOutline | true, width=3-4 | 描边常用，阴影几乎不用 |
+| _overflow | 0 (NONE) | 固定区域用 2(SHRINK) |
+| _cacheMode | 0 (NONE) | 频繁更新数字可用 2(CHAR) |
+| _horizontalAlign | 1 (CENTER) | 数字/分数居中，文本左对齐(0) |
+| _verticalAlign | 1 (CENTER) | 几乎100%都是居中 |
+| 自定义字体 | `_isSystemFontUsed: false` | 配合 `_font: {"__uuid__":"...","__expectedType__":"cc.TTFFont"}` |
+
+### Layout 实战模式
+
+| 特征 | 最常用值 | 说明 |
+|------|---------|------|
+| _layoutType | 1 (VERTICAL) | 其次 2(GRID)，很少用 0(HORIZONTAL) |
+| _resizeMode | 1 (CONTAINER) | 容器适应内容大小 |
+| _spacingX/_spacingY | 0-20px | 常见间距 |
+| _constraint | 0 (NONE) | GRID 用 2(FIXED_COL)+_constraintNum=列数 |
+| _paddingLeft/Right/Top/Bottom | 0 | 紧凑布局为主 |
+
+### Widget 实战模式
+
+| _alignFlags | 含义 | 使用频率 |
+|-------------|------|---------|
+| `45` | 全屏拉伸 | ★★★★★ 最常用 |
+| `17` | 左上角锚定 | ★★★ |
+| `0` | 无对齐 | ★★ |
+| 其他 | 特殊定位 | ★ |
+
+全部使用绝对像素（_isAbs=true），无人用百分比模式。
+
+### Sprite 实战模式
+
+| _type | 名称 | 使用场景 |
+|-------|------|---------|
+| 0 | SIMPLE | 普通图片（99%的情况） |
+| 1 | SLICED | 按钮背景、面板背景（九宫格拉伸） |
+| 3 | FILLED | 仅用于进度条 |
+| 2 | TILED | 几乎不用 |
+
+_sizeMode=0 (CUSTOM) 最安全，配合 UITransform 手动设尺寸。
 
 ## 快速排查清单
 

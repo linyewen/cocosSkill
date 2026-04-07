@@ -111,6 +111,14 @@ XxxPrefab (脚本 + RigidBody[KINEMATIC] + BoxCollider[isTrigger])
 | 跟随游戏对象 | 每帧 `convertToWorldSpaceAR` 跟随 |
 | 游戏对象本身 | 不适配，在世界坐标移动 |
 
+### 3.6 _layer 规则
+
+| 节点类型 | _layer 值 | 说明 |
+|---------|-----------|------|
+| Canvas 及所有 UI 子节点 | `33554432` | UI_2D 层 |
+| Camera 节点 | `1073741824` | Layer 31，特殊层 |
+| Prefab 中所有节点 | `33554432` | 和 Scene 中 UI 节点一致 |
+
 ### 3.5 节点创建决策
 
 **核心原则：能在编辑器里看见的东西，就在编辑器里创建。代码只负责"何时创建"和"怎么动"。**
