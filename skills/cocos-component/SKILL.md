@@ -563,6 +563,70 @@ Enemy:   _group = 8   (1 << 3)
 4. 刷新前引用该资源的 UUID 会返回 `null`
 5. **不要用 `new Node()` 作为刷新前的临时方案** —— 在 JSON 中预先写好结构，刷新后自动生效
 
+## 实战踩坑补充（2026-04 project_1 项目）
+
+### 自定义脚本 __type__ 的三种格式
+
+| 格式 | 示例 | 是否正确 |
+|------|------|---------|
+| 类名 | `"Block"` | ❌ 报 Missing class: Block |
+| 完整 UUID | `"911d1e2b-20ab-4210-9891-2fcabf83bc65"` | ❌ 报 Missing class: 911d1e2b-... |
+| **压缩 UUID** | `"911d14rIKtCEJiRL8q/g7xl"` | ✅ 唯一正确格式 |
+
+### 获取压缩 UUID 的方法
+
+**方法 1：MCP attach_script 的返回值**
+```
+attach_script 返回: "Available components: cc.UITransform, 911d14rIKtCEJiRL8q/g7xl"
+                                                          ^^^^^^^^^^^^^^^^^^^^^^^^
+                                                          这就是压缩 UUID
+```
+
+**方法 2：Python 计算**
+```python
+import base64, uuid
+
+def compress_uuid(full_uuid: str) -> str:
+    """将完整 UUID 转为 Cocos 压缩格式"""
+    hex_str = full_uuid.replace('-', '')
+    raw = bytes.fromhex(hex_str)
+    b64 = base64.b64encode(raw).decode('ascii')
+    # 去掉末尾的 ==，替换 + 为 -（不需要，Cocos 保留 + 和 /）
+    return b64.rstrip('=')
+
+# 示例
+print(compress_uuid("911d1e2b-20ab-4210-9891-2fcabf83bc65"))
+# 输出: kR0eKyCrQhCYkS/Kv4O8ZQ
+```
+
+**方法 3：从 temp/programming/ 编译产物中读取**
+
+### MCP 工具已知限制
+
+| MCP 操作 | 问题 | 解决方案 |
+|---------|------|---------|
+| `create_prefab` | 不保存之前 `set_component_property` 的修改 | 直接用 Python 编辑 prefab JSON |
+| `attach_script` | 返回 "not found" 但实际已挂载 | 看返回的 Available components 确认 |
+| `set_component_property` 数组类型 | 无 `spriteFrameArray` propertyType | 直接编辑场景/prefab JSON 文件 |
+| `find_asset_by_name` | 不返回 spriteFrame 子资源 | 用 `imageUuid@f9941` 格式拼接 |
+
+### 图片 .meta 批量转换
+
+新导入的图片默认 `type: texture`，没有 SpriteFrame 子资源。需要：
+
+1. 修改 `.meta` 文件：`userData.type` 从 `"texture"` 改为 `"sprite-frame"`
+2. 删除 `userData.redirect` 字段
+3. 添加 `f9941` 子资源到 `subMetas`
+4. 在编辑器中刷新资源（refresh + reimport）
+
+Python 批量脚本参见 scene-setup skill。
+
+### Prefab 中 _layer 值
+
+- Scene 中的节点：`_layer: 1073741824`
+- Prefab 中的节点：`_layer: 33554432`（UI_2D）
+- **混用会导致渲染层级错误**
+
 ## 快速排查清单
 
 | 现象 | 检查 |

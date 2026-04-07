@@ -241,7 +241,45 @@ if (event.otherCollider.getGroup() === 4) { ... }
 
 ---
 
-## 八、交互规则
+## 八、Prefab 必须绑定代码（铁律）
+
+**能 prefab 的必须 prefab，prefab 必须绑定代码。**
+
+每个 prefab 的游戏实体必须有自己的脚本组件，封装自身行为。游戏主脚本只负责调度（instantiate + getComponent().方法()），不在外部直接操作 prefab 内部的 tween/动画/状态。
+
+| 实体类型 | 必须有的脚本 | 脚本封装的行为 |
+|---------|------------|-------------|
+| 可收集道具 | CollectItem | show() 入场动画、collect() 收集动画+销毁 |
+| 子弹/投射物 | Bullet | init(speed, dir) 初始化、update 自动移动、命中时处理 |
+| 障碍物 | Obstacle | init(speed) 初始化、update 自动移动、被击碎时动画 |
+| 爆炸特效 | Explosion | play() 帧动画/tween 播放完自动销毁 |
+| UI 列表项 | XxxItem | setData() 设置显示数据 |
+
+**组件封装原则：** 组件设计了 `play()` / `setData()` 方法，游戏脚本就必须调用这些方法，不能在外部绕过直接操作 tween/spriteFrame/opacity。
+
+**反模式检查**：看到 `instantiate(prefab)` 后紧跟 `tween(node)...` 或 `node.setPosition(...)` 循环更新，立即停下——这些行为应该在 prefab 的组件里。
+
+---
+
+## 九、工作流 Skill 索引
+
+| 做什么 | 调什么 |
+|--------|--------|
+| 从策划案+美术做完整游戏 | `/new-game` |
+| 创建游戏实体/prefab | `/cocos-create` |
+| 审查代码质量 | `/cocos-review` |
+| 设计场景分层 | `/cocos-layer` |
+| 3D引擎做2D避坑 | `/cocos-3d-for-2d` |
+| 2.x迁移3.8 | `/cocos-migrate` |
+| UI还原设计 | `/ui-design` |
+| 3D引擎2D场景搭建 | `/scene-setup` |
+| 游戏架构分层 | `/game-architecture` |
+| 实体生命周期 | `/entity-lifecycle` |
+| 组件JSON参考 | `/cocos-component` |
+
+---
+
+## 十、交互规则
 
 - 回复使用中文
 - UI 设计前先读取效果图，精确还原布局参数
@@ -249,7 +287,7 @@ if (event.otherCollider.getGroup() === 4) { ... }
 
 ---
 
-## 九、Skills 安装检查
+## 十一、Skills 安装检查
 
 如果当前环境没有 Cocos Creator 相关 skill（如 game-architecture、entity-lifecycle 等），说明 cocosSkill 工具链尚未安装。请先执行以下命令安装：
 
