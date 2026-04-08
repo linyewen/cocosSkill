@@ -339,9 +339,36 @@ if (event.otherCollider.getGroup() === 4) { ... }
 **回流流程：**
 ```
 1. 改 ~/.claude/skills/xxx/SKILL.md 或 ~/.claude/CLAUDE.md
-2. cp 到 /e/temp/cocosSkill/
-3. cd /e/temp/cocosSkill && git add . && git commit && git push
+2. cp 到 cocosSkill/
+3. cd cocosSkill && git add . && git commit && git push
 ```
+
+### 10.5 Scene JSON 编辑与编辑器同步
+
+**绝对不要在编辑器打开场景时直接编辑 scene.scene / prefab JSON 文件。**
+
+Cocos Creator 编辑器在内存中维护场景状态。当编辑器保存（Ctrl+S 或自动保存）时，会用内存中的状态覆盖磁盘文件。
+
+**正确流程：**
+```
+MCP save_scene → 编辑 JSON → MCP open_scene 重新加载
+```
+
+- 尽量用 MCP API（set_node_property、attach_script 等）替代直接编辑 JSON
+- @property 绑定如果 MCP API 不支持，编辑 JSON 后**必须立即 open_scene 重新加载**
+- 编辑 JSON 前提醒用户不要在编辑器中按 Ctrl+S
+
+### 10.6 Sub-Agent 委托必须携带规范
+
+委托 sub-agent 创建场景/prefab/节点时，prompt 中**必须包含本文件中对应的具体规则**，不能只给"创建这些节点"。
+
+Sub-agent 看不到 CLAUDE.md。如果 prompt 里只写了节点名和组件列表，agent 会用默认值创建，导致 Widget _alignFlags=0、Layout 缺失、节点堆叠 (0,0)。
+
+**实施清单：**
+1. 创建场景 → prompt 包含适配策略表（3.4 节：哪些层 Widget 45，哪些不要）
+2. 创建 prefab → prompt 包含节点架构原则（3.1 节：根节点=逻辑，子节点=视觉）
+3. 创建全屏页面 → prompt 包含 content + Layout 规则（3.2 节）
+4. 创建完成后 → 必须验证关键属性值（_alignFlags、_contentSize、position）
 
 ---
 
