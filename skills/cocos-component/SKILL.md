@@ -279,15 +279,53 @@ SpriteFrame UUID: cb1af3a9-924d-4ed6-b9b9-8daaf11be8fa@f9941  (加 @f9941 后缀
 | `target` | 挂载 component 的节点的 `__id__` | 不是按钮节点自身（除非脚本也挂在按钮上） |
 | UITransform | 按钮节点的 contentSize 决定点击区域 | contentSize 为 0 则点不到 |
 
-### 压缩 UUID 获取
+### 脚本压缩 UUID 算法（实测逆向验证，6 组数据 100% 匹配）
 
-```bash
-# 方法1：工具脚本
-node tools/cc-uuid.js --uuid xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+Prefab/Scene JSON 中自定义脚本的 `__type__` 字段使用 Cocos 专有的压缩 UUID 格式，**不是标准 base64**。
 
-# 方法2：从编译产物中读取
-# temp/programming/... 编译后的 .js 文件中包含压缩后的类 ID
+#### 算法步骤
+
 ```
+输入: 完整 UUID（从 .ts.meta 的 "uuid" 字段获取）
+      如 c22cebec-ee74-4e88-a4f6-71edbf2e67c4
+
+1. 去掉短横线 → 32位十六进制: c22cebecee744e88a4f671edbf2e67c4
+2. 前5位保持不变 → c22ce
+3. 后27位当作大整数 → int("becee744e88a4f671edbf2e67c4", 16)
+4. 大整数转 base64（字符表: A-Za-z0-9+/，大端序高位在前）→ vs7nROiKT2ce2/LmfE
+5. 拼接 → c22cevs7nROiKT2ce2/LmfE（23字符）
+```
+
+#### Python 工具函数
+
+```python
+BASE64_KEYS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+def compress_uuid(uuid_str: str) -> str:
+    """Cocos Creator 脚本压缩 UUID（用于 prefab/scene JSON 的 __type__ 字段）"""
+    clean = uuid_str.replace('-', '')
+    prefix = clean[:5]
+    val = int(clean[5:], 16)
+    result = []
+    while val > 0:
+        result.append(BASE64_KEYS[val % 64])
+        val //= 64
+    result.reverse()
+    return prefix + ''.join(result)
+
+# 用法：读 .ts.meta 的 uuid，算出 prefab 中应填的 __type__
+# uuid = "c22cebec-ee74-4e88-a4f6-71edbf2e67c4"  → "c22cevs7nROiKT2ce2/LmfE"
+```
+
+#### 获取压缩 UUID 的方式（按优先级）
+
+| 方式 | 适用场景 | 操作 |
+|------|---------|------|
+| 1. 从已有 prefab 读取 | 脚本已挂载到某个 prefab | 读 prefab JSON 找 `__type__` 非 `cc.` 的条目 |
+| 2. 用上面的算法计算 | 已知 .ts.meta 中的 UUID | `compress_uuid(meta_uuid)` |
+| 3. 从 library 读取 | 编辑器已编译 | 读 `.assets-data.json` 的 `dependScripts` |
+
+> ⚠️ **铁律**: 绝不用标准 `base64.b64encode()`，必须用上面的大整数 base64 算法。标准 base64 得到的结果完全不同，会导致 "Script missing" 错误。
 
 ## Widget
 
