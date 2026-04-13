@@ -211,3 +211,5 @@ else:
 | 8 | Canvas._cameraComponent 指向 Camera | __id__ 指向 cc.Camera 组件 |
 | 9 | Scene 只有 Canvas 一个子节点 | Camera 不应该在 Scene._children 里 |
 | 10 | refresh_assets 后重新 open_scene | 编辑器有缓存，不重新打开看到的是旧的 |
+| 11 | Camera._clearFlags = 7 | 必须清除颜色+深度+模板。`6`=不清颜色→残影！`4`=只清颜色。`7`=全清(正确) |
+| 12 | Camera._color 匹配背景色 | clearFlags=7 时用此颜色清除画面，应与 BG_COLOR 一致 |

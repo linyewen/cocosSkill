@@ -269,6 +269,33 @@ if (event.otherCollider.getGroup() === 4) { ... }
 | 纯数据/逻辑 | 普通 class | 不需要节点和生命周期 |
 | 碰撞识别 | getComponent(类) | 类型安全 |
 | MCP/编辑器不可用 | 提醒用户开启，不绕过 | 不用代码替代编辑器 |
+| 多模式游戏（经典/生存/养成）| 模式控制器模式 | GameManager 只分发，不含 if(mode) 业务逻辑 |
+
+### 7.1 模式控制器模式（多模式游戏必用）
+
+当游戏有多种模式时，**禁止在 GameManager 中写 `if (gameMode === 'xxx')` 分支**。用接口+独立类隔离：
+
+```typescript
+// 接口定义模式行为
+interface IGameMode {
+    init(ctx: GameContext): void;
+    start(): void;
+    update(dt: number): void;
+    onBlockDestroyed(data): void;
+    onCannonLapDone(data): void;
+    destroy(): void;
+}
+
+// GameManager 只做模式分发（唯一的 if 判断）
+const mode = gameMode === 'survival' ? new SurvivalMode() : new ClassicMode();
+mode.init(ctx);
+
+// 每种模式是独立文件
+// mode/ClassicMode.ts — 关卡加载/全清胜利/托盘满失败
+// mode/SurvivalMode.ts — 波次调度/元素生长/升级系统
+```
+
+**好处**：加新模式只需新建文件，不影响已有模式。共享组件（PixelGrid/BeltSystem/Cannon）提供能力，模式控制器决定策略。
 
 ---
 
