@@ -388,14 +388,70 @@ Cocos Creator 编辑器在内存中维护场景状态。当编辑器保存（Ctr
 
 **正确流程：**
 ```
-MCP save_scene → 编辑 JSON → MCP open_scene 重新加载
+MCP save_scene → 编辑 JSON → MCP open_scene 重新加载 → 不再 save_scene
 ```
 
 - 尽量用 MCP API（set_node_property、attach_script 等）替代直接编辑 JSON
 - @property 绑定如果 MCP API 不支持，编辑 JSON 后**必须立即 open_scene 重新加载**
+- **open_scene 后不能再 save_scene**，否则编辑器内存中的 None 会覆盖绑定
 - 编辑 JSON 前提醒用户不要在编辑器中按 Ctrl+S
+- **__id__ 索引禁止硬编码**，必须按"节点名 + 组件类型"动态查找（见 10.6-B）
 
-### 10.6 Sub-Agent 委托必须携带规范
+### 10.6 Prefab/Scene 绑定铁律（ProjectDrop 血泪教训）
+
+**每一步操作后必须验证结果，不信任 API 返回值。**
+
+#### A. Prefab 挂脚本：直接编辑 JSON，不用 MCP 实例化→更新回
+
+MCP `attach_script` + `update_prefab` 流程不可靠——脚本可能挂到实例但没回写到 prefab 文件。
+
+```
+✗ 错误流程：instantiate prefab → attach_script → update_prefab → 以为成功
+✓ 正确流程：直接用 Python 编辑 prefab JSON，添加脚本组件对象 + 更新根节点 _components 引用
+```
+
+编辑后必须 `reimport_asset` 让编辑器重新导入。
+验证：`get_components` 检查实例化后的节点是否有脚本。
+
+#### B. Scene @property 绑定：__id__ 必须动态查找，禁止硬编码
+
+编辑器每次 save_scene 会重新序列化，组件 `__id__` 索引会因新增/删除组件而偏移。
+
+```
+✗ 错误：data[55]['scoreLabel'] = {'__id__': 29}  ← 硬编码，下次 save 就错
+✓ 正确：find_comp_on_node(find_node_id('ScoreLabel'), 'cc.Label')  ← 按名称+类型动态查找
+```
+
+#### C. 编辑 JSON 后不能再 save_scene
+
+编辑器内存中自定义脚本的 @property 是 None（编辑器无法解析压缩 UUID 的脚本引用）。
+save_scene 会用 None 覆盖 JSON 中写入的正确绑定。
+
+```
+正确顺序：
+1. MCP save_scene（让编辑器先写出最新结构）
+2. Python 编辑 JSON（动态查找 __id__ 写入绑定）
+3. MCP open_scene（重新加载修改后的文件）
+4. 不再 save_scene！提醒用户不要 Ctrl+S
+```
+
+#### D. 每步操作后必须验证
+
+| 操作 | 验证方式 |
+|------|---------|
+| attach_script | 读 prefab JSON 检查是否有自定义脚本 __type__ |
+| prefab_update | 读 prefab JSON 检查根节点 _components 是否引用脚本 |
+| JSON 绑定 @property | 读回 JSON 检查无 None 值 |
+| open_scene 后 | get_components 确认编辑器加载了正确的绑定 |
+
+**原则：API 说成功 ≠ 真成功。文件里有 ≠ 编辑器认。验证到能跑为止。**
+
+#### E. 调用 infra 工具前先确认参数类型
+
+AnimationManager.play() 接收 Node，不接收 Sprite。
+调用前读一下函数签名，不要凭印象传参。
+
+### 10.7 Sub-Agent 委托必须携带规范
 
 委托 sub-agent 创建场景/prefab/节点时，prompt 中**必须包含本文件中对应的具体规则**，不能只给"创建这些节点"。
 
