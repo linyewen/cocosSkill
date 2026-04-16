@@ -186,7 +186,8 @@ this.node.addChild(panel);
 - 引用的节点/组件必须在编辑器中创建并绑定，代码中**直接使用**
 - **不做空判断，不做 fallback**，运行时缺失就报错暴露问题
 - **不用 getChildByName 做 fallback**
-- **新增 @property 必须同步绑定**：代码声明和 JSON 绑定是**原子操作**
+- **新增 @property 必须同步绑定**：代码声明和 JSON 绑定是**原子操作**，写完脚本后必须立刻用 Python 编辑 prefab/scene JSON 绑定 __id__，不能留到后面
+- **Prefab @property 绑定流程同 Scene**：按"节点名+组件类型"动态查找 __id__，编辑后 reimport_asset，读回 JSON 验证无 null
 
 ---
 
@@ -397,6 +398,31 @@ MCP save_scene → 编辑 JSON → MCP open_scene 重新加载 → 不再 save_s
 - 编辑 JSON 前提醒用户不要在编辑器中按 Ctrl+S
 - **__id__ 索引禁止硬编码**，必须按"节点名 + 组件类型"动态查找（见 10.6-B）
 
+### 10.5.1 MCP update_prefab 会丢失 spriteFrame（ProjectDrop Session 2 教训）
+
+MCP `set_component_property` 设置 spriteFrame 后，`update_prefab` 会重新序列化 prefab JSON。编辑器序列化时可能把 spriteFrame 覆盖为 null（和 @property 被覆盖是同一个原因）。
+
+```
+✗ 错误流程：MCP set_component_property(spriteFrame) → update_prefab → 以为成功（实际 JSON 里是 null）
+✓ 正确流程：直接用 Python 编辑 prefab JSON 的 _spriteFrame 字段写入 __uuid__ → reimport_asset
+```
+
+**静态贴图（不会运行时变化的）必须直接写入 prefab JSON**，格式：
+```json
+"_spriteFrame": {
+    "__uuid__": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx@f9941",
+    "__expectedType__": "cc.SpriteFrame"
+}
+```
+
+**动态贴图（运行时根据状态变化的）用 resources.load()**，如结算页的胜利/失败图标。
+
+### 10.5.2 全屏页面 Prefab 必须设 Widget _alignFlags=45
+
+全屏页面（引导、结算、弹窗）的根节点 Widget `_alignFlags` 必须设为 45（上下左右四边=0）。Python 编辑 JSON 时同步设置 `_left/_right/_top/_bottom` 为 0。
+
+**ProjectDrop 教训**：两个全屏 prefab 的 _alignFlags=0（无适配），运行时不跟随屏幕尺寸。
+
 ### 10.6 Prefab/Scene 绑定铁律（ProjectDrop 血泪教训）
 
 **每一步操作后必须验证结果，不信任 API 返回值。**
@@ -446,10 +472,33 @@ save_scene 会用 None 覆盖 JSON 中写入的正确绑定。
 
 **原则：API 说成功 ≠ 真成功。文件里有 ≠ 编辑器认。验证到能跑为止。**
 
-#### E. 调用 infra 工具前先确认参数类型
+#### E. 调用 infra 工具前先确认参数类型和 3D 引擎兼容性
 
 AnimationManager.play() 接收 Node，不接收 Sprite。
 调用前读一下函数签名，不要凭印象传参。
+
+**BaseUtil.shakeScreen() 在 3D 引擎做 2D 时会导致黑屏！**
+原因：硬编码 `originalPos = v3(0, 0, 0)`，但 Camera 在 z=1000。震完后 Camera 被设到 z=0 → 什么都渲染不出。
+**正确做法**：不用 BaseUtil.shakeScreen，自己写安全版：先读 Camera 真实 position.z，震动只在 XY 平面，复位时保持原始 z 值。
+
+#### F. 禁止代码拼 UI 外观
+
+```
+✗ 错误：new Node('mask') → addComponent(UITransform) → addComponent(Sprite) → 设颜色/大小
+✓ 正确：编辑器/MCP 创建节点结构 → prefab 中设好外观 → 代码只控制 show/hide/动画/事件
+```
+
+CLAUDE.md 第四节已有此规则，但 ProjectDrop 中多次违反。**MCP 不可用时提醒用户开 MCP，不用 new Node() 绕过。**
+
+#### G. 九宫格 Sprite 用 contentSize 不用 scale
+
+九宫格（Sliced）模式的 Sprite 调整大小必须用 `UITransform.setContentSize(width, height)`，不能用 `node.setScale()`。Scale 会把九宫格的边角也拉伸变形，contentSize 才能正确保持边角不变形。
+
+碰撞检测时读 contentSize 而非 scale：
+```typescript
+const ut = node.getComponent(UITransform);
+const halfW = ut.contentSize.width / 2;
+```
 
 ### 10.7 Sub-Agent 委托必须携带规范
 
