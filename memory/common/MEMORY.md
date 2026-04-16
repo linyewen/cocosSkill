@@ -1,0 +1,3 @@
+- [Sprite sizeMode规范](feedback_sprite_sizemode.md) — 默认TRIMMED(1)用贴图自身尺寸，只有特殊需求才用CUSTOM(0)
+- [全屏mask设计规范](feedback_fullscreen_mask_design.md) — 不用BlockInputEvents，用代码注册触摸拦截，mask只做视觉遮罩
+- [图片meta必须有sprite-frame](feedback_image_meta_spriteframe.md) — 导入图片后检查meta，缺少sprite-frame会导致全黑

@@ -23,6 +23,15 @@ else
     echo "  ✓ CLAUDE.md → ~/.claude/CLAUDE.md"
 fi
 
+# 3. 同步通用 Memory
+MEMORY_SRC="$REPO_DIR/memory/common"
+if [ -d "$MEMORY_SRC" ]; then
+    GLOBAL_MEMORY="$HOME/.claude/memory"
+    mkdir -p "$GLOBAL_MEMORY"
+    cp "$MEMORY_SRC"/*.md "$GLOBAL_MEMORY/" 2>/dev/null
+    echo "  ✓ common memory → $GLOBAL_MEMORY"
+fi
+
 echo ""
 echo "安装完成！Skills 已同步到 $SKILL_DIR"
 echo "lib/ 代码库请手动复制到项目中：cp lib/*.ts your-project/assets/Script/infra/"

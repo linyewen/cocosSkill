@@ -79,10 +79,18 @@ EnemyPrefab (UITransform + Sprite + Enemy脚本 + BoxCollider)  ← 视觉和逻
 **全屏页面标准结构**（结算、选择等）：
 ```
 XxxView (Widget四边=0 + 脚本)
-├── mask (Sprite半透明 + BlockInputEvents)
+├── mask (Sprite黑色 + UIOpacity=100 + sizeMode=CUSTOM)   ← 纯视觉，无 BlockInputEvents
 └── content (UIOpacity + Layout)
     ├── Item实例
     └── ...
+```
+
+**触摸拦截**：不用 `BlockInputEvents`（会吞掉子节点和全局触摸事件）。改为脚本 onLoad 中注册：
+```typescript
+// 根节点拦截触摸，阻止事件穿透到游戏层
+this.node.on(Node.EventType.TOUCH_START, (e) => { e.propagationStopped = true; }, this);
+// 如需点击任意位置触发操作（如引导页跳过）：
+this.node.on(Node.EventType.TOUCH_END, this.onClick, this);
 ```
 
 **游戏对象标准结构**（Enemy/Player/Bullet）：
@@ -101,6 +109,16 @@ XxxPrefab (脚本 + RigidBody[KINEMATIC] + BoxCollider[isTrigger])
 - shadow → UITransform + **Sprite**
 - label → UITransform + **Label**
 - 纯逻辑节点（shotNode/effect）→ 只需 UITransform
+
+### 3.3.1 Sprite sizeMode 选择
+
+| sizeMode | 值 | 含义 | 何时用 |
+|---------|---|------|-------|
+| TRIMMED | 1 | 用贴图裁切后的自身尺寸 | **默认**，图标/按钮/角色等不需要手动设大小 |
+| CUSTOM | 0 | 跟随 UITransform contentSize | 九宫格拉伸、方块 icon、全屏 mask、需固定尺寸的小图标 |
+| RAW | 2 | 用贴图原始尺寸（不裁切） | 极少用 |
+
+**规则：不设置大小的都用 TRIMMED(1)，只有明确需要控制大小才改 CUSTOM(0)。**
 
 ### 3.4 适配策略速查
 
@@ -258,7 +276,21 @@ if (event.otherCollider.getGroup() === 4) { ... }
 
 两者不混用。
 
-### 6.1 资源文件命名规则
+### 6.1 导入图片后检查 meta
+
+导入图片资源后，必须检查 `.meta` 文件的 `subMetas` 是否包含 `sprite-frame` importer：
+```json
+"subMetas": {
+    "f9941": {
+        "importer": "sprite-frame",  ← 必须有这个
+        "name": "spriteFrame",
+        ...
+    }
+}
+```
+缺少 sprite-frame submeta 会导致 Sprite 组件显示全黑。修复：在编辑器中右键资源 → Reimport，或手动添加 submeta。
+
+### 6.2 资源文件命名规则
 
 **导入资源时，所有文件名和文件夹名必须是英文或数字，禁止中文。**
 
