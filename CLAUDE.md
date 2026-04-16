@@ -225,7 +225,26 @@ activateShield() { this.node.addComponent(CircleCollider2D); }
 
 // ✗ 禁止：每帧 getComponent
 update() { this.getComponent(Sprite).color = ...; }
+
+// ✗ 禁止：getChildByName 获取子节点组件
+const iconNode = node.getChildByName('icon');
+const sprite = iconNode.getComponent(Sprite);
+sprite.spriteFrame = sf;
+
+// ✓ 正确：组件暴露方法，外部通过方法操作
+// 组件内部：
+@property(Sprite) icon: Sprite = null;
+setIcon(sf: SpriteFrame): void { if (this.icon) this.icon.spriteFrame = sf; }
+get iconNode(): Node | null { return this.icon ? this.icon.node : null; }
+// 外部调用：
+const coin = node.getComponent(Coin);
+coin.setIcon(spriteFrame);
 ```
+
+**`getChildByName` 使用规则**：
+- ✗ 禁止用于获取 prefab 内部子节点的组件（应通过 @property + 组件方法）
+- ✓ 仅允许用于场景级节点查找（如 `canvas.getChildByName('Camera')`）
+- **原因**：getChildByName 让 Manager 依赖 prefab 内部结构（节点命名），破坏封装。编辑器中也无法追踪绑定关系。
 
 ### 5.2 页面与子元素分离（View / Item 原则）
 
