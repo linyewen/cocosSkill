@@ -332,6 +332,15 @@ if __name__ == '__main__':
 | 5 套 ID 系统 | [`skills/cocos-prefab-crud/reference/id-system.md`](skills/cocos-prefab-crud/reference/id-system.md) |
 | 新项目启动模板 | [`skills/cocos-prefab-crud/templates/T5-new-project-bootstrap.md`](skills/cocos-prefab-crud/templates/T5-new-project-bootstrap.md) |
 
+### 🎮 给策划写 GDD 用（策划案模板）
+
+| 主题 | 文档 |
+|---|---|
+| **30 秒试玩广告 GDD 模板**（策划照这个填） | [`templates/GDD_PLAYABLE_30S_TEMPLATE.md`](templates/GDD_PLAYABLE_30S_TEMPLATE.md) |
+| **模板填写示例**（ProjectDrop 试玩模式填充） | [`templates/GDD_PLAYABLE_30S_EXAMPLE.md`](templates/GDD_PLAYABLE_30S_EXAMPLE.md) |
+
+策划写需求 + 美术给图 + 开发者装 cocosSkill → AI 能做到 85%+ 还原。
+
 ---
 
 ## 🔄 本文件维护规则
