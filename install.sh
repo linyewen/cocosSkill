@@ -33,6 +33,13 @@ if [ -d "$MEMORY_SRC" ]; then
 fi
 
 echo ""
-echo "安装完成！Skills 已同步到 $SKILL_DIR"
-echo "lib/ 代码库请手动复制到项目中：cp lib/*.ts your-project/assets/Script/infra/"
-echo "commands/ 请手动复制到项目中：cp commands/* your-project/.claude/commands/"
+echo "========================================"
+echo "✅ 全局 skill + memory + CLAUDE.md 安装完成"
+echo "========================================"
+echo ""
+echo "下一步 — 初始化一个新 Cocos 项目（lib + scripts + commands 一键到位）："
+echo "  bash init_project.sh <your-project-path>"
+echo ""
+echo "例如："
+echo "  bash init_project.sh D:/minigame/my-new-game"
+echo ""

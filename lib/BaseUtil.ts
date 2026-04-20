@@ -100,32 +100,28 @@ export class BaseUtil {
     }
 
     /**
-     * 屏幕震动效果
-     * @param duration 震动持续时间（秒）
-     * @param intensity 震动强度（像素）
+     * 屏幕震动（保留 Camera z 原值，避免 z=0 导致黑屏）
+     *
+     * 生产级用法参考 ProjectDrop EffectManager.safeShake — 加 100ms 节流
+     * 避免高频击杀时每帧重建 tween。
      */
-    public static shakeScreen(duration: number = 1.0, intensity: number = 10): void {
+    public static shakeScreen(duration: number = 0.3, intensity: number = 10): void {
         const canvas = find('Canvas');
         if (!canvas) return;
-
         const cameraNode = canvas.getChildByName('Camera');
         if (!cameraNode) return;
 
-        const originalPos = v3(0, 0, 0);
+        const origZ = cameraNode.position.z;
         tween(cameraNode).stop();
-        tween(cameraNode)
-            .to(0.016, {
-                position: v3(
-                    originalPos.x + (Math.random() - 0.5) * 2 * intensity,
-                    originalPos.y + (Math.random() - 0.5) * 2 * intensity,
-                    originalPos.z
-                )
-            })
-            .to(0.1, { position: originalPos })
-            .union()
-            .repeat(Math.floor(duration * 30))
-            .call(() => { cameraNode.setPosition(v3(0, 0, 0)); })
-            .start();
+
+        const steps = Math.max(1, Math.floor(duration / 0.03));
+        let t = tween(cameraNode);
+        for (let i = 0; i < steps; i++) {
+            const rx = (Math.random() - 0.5) * 2 * intensity;
+            const ry = (Math.random() - 0.5) * 2 * intensity;
+            t = t.to(0.02, { position: v3(rx, ry, origZ) });
+        }
+        t.to(0.02, { position: v3(0, 0, origZ) }).start();
     }
 
     /** Label 数字跳动动画（缩放弹跳效果） */
