@@ -1,3 +1,11 @@
 - [Sprite sizeMode规范](feedback_sprite_sizemode.md) — 默认TRIMMED(1)用贴图自身尺寸，只有特殊需求才用CUSTOM(0)
 - [全屏mask设计规范](feedback_fullscreen_mask_design.md) — 不用BlockInputEvents，用代码注册触摸拦截，mask只做视觉遮罩
 - [图片meta必须有sprite-frame](feedback_image_meta_spriteframe.md) — 导入图片后检查meta，缺少sprite-frame会导致全黑
+- [Cocos保存弹窗处理](feedback_cocos_save_prompt.md) — Python 改磁盘后 Cocos 弹"保存场景?"必点"取消"，否则绑定被污染版本覆盖
+- [Demo阶段 dev 可视化](feedback_demo_visibility.md) — dev 工具用真实按钮，禁长按/快捷键/隐藏手势
+- [Sprite颜色乘算](feedback_sprite_color_multiply.md) — color 和 spriteFrame 是 multiply 关系，深色 tint 会把贴图压到近黑
+- [Button vs TOUCH_END](feedback_button_vs_touch_end.md) — 多层 UI 点击必须挂 cc.Button 才能冒泡，子 UITransform 会吞事件
+- [Starter 自动初始化](feedback_starter_workflow.md) — 用户给 URL+项目路径就自动跑 clone+install.sh+init_project.sh，不让用户手敲
+- [UI 预制缓存](feedback_ui_cache_vs_instantiate.md) — 常驻 UI 用 instantiate 一次 + active 切换，不要每次 new/destroy
+- [UI 残留防治](feedback_ui_residual_clear.md) — GameEntry.clearPopupLayer + Controller 监听 MODE_SELECTED 自销毁，双层防堆叠
+- [跨 reset 状态桥接](feedback_state_bridge_via_save.md) — 首通奖励 / DEV 装备 / 商店购买用 SaveManager.pendingX 桥接，不直接写 GameState
