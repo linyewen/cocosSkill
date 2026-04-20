@@ -50,8 +50,15 @@ Cocos 3.8 的 prefab/scene 是序列化 JSON，看起来可以随手改，但实
 | 现有 prefab 新加节点或新加组件（结构变化）| [T2](templates/T2-add-node-component.md) | **编辑器主导**，Python 补绑定 |
 | 新建一个完整 prefab | [T3](templates/T3-create-prefab.md) | **编辑器建结构**，Python 补脚本/资源引用 |
 | 把 prefab 引用注入 scene 的组件字段 | [T4](templates/T4-patch-scene.md) | Python 可主导 |
+| **开启全新 Cocos 游戏项目** | [T5](templates/T5-new-project-bootstrap.md) | **用户 cp starter + 编辑器建场景**，Python 补业务 prefab |
 
 **如果任务跨越多个模板**：按依赖顺序分步执行，每步走完验证再下一步。
+
+**跨项目 starter**：本仓库（cocosSkill）的 `lib/`（TS 运行时基础库）+ `scripts/`（Python 工具）就是 starter 素材。新项目：
+```bash
+cp cocosSkill/lib/*.ts your-project/assets/Script/infra/
+cp cocosSkill/scripts/*.py your-project/scripts/
+```
 
 ---
 
@@ -97,9 +104,10 @@ Cocos 3.8 的 prefab/scene 是序列化 JSON，看起来可以随手改，但实
 
 - [uuid_compress.py](tools/uuid_compress.py) — 完整 UUID → 压缩 UUID
 - [find_id_by_name.py](tools/find_id_by_name.py) — 在 prefab/scene JSON 里按 `_name` 定位 `__id__`
-- [patch_property.py](tools/patch_property.py) — 安全地改某组件的某字段
-- [validate_prefab.py](tools/validate_prefab.py) — 校验 prefab JSON 完整性（必填字段、循环引用）
-- [meta_gen.py](tools/meta_gen.py) — 给新脚本补 `.ts.meta`（⛔ 档操作）
+
+**生产级完整工具在本仓库的 `scripts/` 里**（推荐直接用）：
+- `scripts/prefab_builder.py` — 完整 PrefabBuilder 类 + `ensure_cocos_closed()` 防呆 + `patch_scene_prefab_ref()` 注入工具
+- `scripts/ui_factories.py` — `make_button` / `make_popup_root` / `make_label` / `make_card` / `make_mask` 等高频 UI 模式
 
 ---
 
