@@ -135,6 +135,46 @@ grep -n '"_spriteFrame": null' assets/**/*.prefab assets/**/*.scene
 ```
 任何 Sprite 都不该留 null，除非故意要"透明占位"。
 
+### 坑 7：脚本 + Sprite 同挂根节点（违反 CLAUDE.md §3.1）
+
+**现象**：prefab 的根节点同时挂着自定义脚本（`Coin` / `Energy` / `Explosion` / `Finish`）和 `cc.Sprite`（做视觉）。功能上不会 crash，但维护混乱：
+- 脚本改动可能影响视觉（改 contentSize 影响 Sprite 尺寸）
+- 视觉换图时，可能动到脚本挂接的 @property
+- Prefab-analyze / 查找逻辑入口时，要区分"这个 Sprite 是业务还是装饰"
+
+违反 CLAUDE.md §3.1「根节点 = 逻辑锚点，子节点 = 视觉表现」。
+
+**正确模板**：
+```
+root Node (UITransform + 自定义脚本，无 Sprite)
+└── icon Node (UITransform + Sprite 预绑首帧)
+```
+
+**脚本侧约定**：
+```ts
+@property(Node) icon: Node = null!;
+
+onEnable() {
+    const target = this.icon || this.node;  // 防御：老 prefab 没 icon 时降级
+    AnimationManager.instance?.play(target, DIR, count, fps, loop);
+}
+
+collect() {
+    // tween 作用 root，子节点 icon 跟随缩放
+    tween(this.node).to(0.15, { scale: new Vec3(1.6, 1.6, 1) }).start();
+}
+```
+
+**何时可以例外**：纯静态装饰节点（无脚本、无动画、无碰撞）可以 Sprite 直接挂根节点——比如 TileA/TileB 这种背景瓦片。
+
+**自检**：
+```bash
+# 查所有 prefab 是否有 Sprite 和自定义 script 挂根节点
+# (懒人版：看根节点的 _components 数量，> 2 且含 cc.Sprite 就要审查)
+```
+
+**Finish 特殊**：Finish 线本身是"两个视觉子"的容器（banner 横幅 + label "FINISH" 文字），脚本只是位置锚点。所以根只留 UITransform + Finish 脚本，banner 和 label 都是平级子节点。
+
 ### 坑 6：MCP `prefab_create_prefab` 会丢掉所有视觉字段
 
 **现象**：MCP 先在场景搭好节点 + 设好 spriteFrame + color + sizeMode + contentSize + 子节点 position，然后 `prefab_create_prefab`——打开生成的 .prefab，**发现 spriteFrame 变 null、color 回白、sizeMode=1、contentSize=100×100、子节点 position=0,0,0**。等于 MCP 只序列化了节点结构和组件种类，视觉属性全部重置成默认值。
