@@ -86,15 +86,51 @@ UITransform / Sprite / Label / Button / Widget / Layout / ProgressBar / BlockInp
 | `__expectedType__` | 必须是 `"cc.SpriteFrame"` | 不是 `"cc.Texture2D"` |
 | `_color` 乘算 | color 和 spriteFrame 是乘算关系，深色 tint 会压黑贴图 | 想保原色用 `(255, 255, 255, 255)` 不 tint |
 
-### sizeMode 决策表
+### type + sizeMode 组合决策（最常错的点）
 
-| sizeMode | 值 | 含义 | 何时用 |
-|---------|---|------|-------|
-| TRIMMED | 1 | 用贴图裁切后的自身尺寸 | **默认**，图标/按钮/角色等不需要手动设大小 |
-| CUSTOM | 0 | 跟随 UITransform contentSize | 九宫格拉伸、方块 icon、全屏 mask、需固定尺寸的小图标 |
-| RAW | 2 | 用贴图原始尺寸（不裁切）| 极少用 |
+两个字段必须**联动判断**，分开想就会错。
 
-**规则**：不设置大小的都用 TRIMMED(1)，只有明确需要控制大小才改 CUSTOM(0)。
+**两步决策**：
+
+**Step 1 — 看图要不要拉伸变形，定 `_type`**
+
+| 需求 | `_type` | 典型场景 |
+|------|---------|---------|
+| 不拉伸，按图本身显示 | `0` SIMPLE | 图标、角色、方块、icon |
+| 按九宫格拉伸（边角不变，中间拉伸） | `1` SLICED | 按钮底、面板/弹窗背景、进度条底 |
+| 平铺重复 | `2` TILED | 背景纹理（少用） |
+| 按百分比填充 | `3` FILLED | 进度条前景 |
+
+**Step 2 — 看节点尺寸要不要固定，定 `_sizeMode`**
+
+| 需求 | `_sizeMode` | 节点尺寸由谁决定 |
+|------|-------------|-----------------|
+| 跟着图走，不管 UITransform | `1` TRIMMED | 贴图裁切后的原始尺寸 |
+| 强制指定尺寸（要拉大/缩小/统一对齐） | `0` CUSTOM | `UITransform._contentSize` |
+| 用贴图未裁切的完整尺寸 | `2` RAW | 极少用 |
+
+**联动铁律**：
+
+- `SLICED` / `FILLED` ⇒ **必须** `CUSTOM`（不指定尺寸 = 没法拉伸 = 九宫格白加）
+- `SIMPLE` + 原图显示 ⇒ `TRIMMED`（最常见，默认）
+- `SIMPLE` + 强制尺寸（比如 64×64 icon 框） ⇒ `CUSTOM`
+- `TRIMMED` + `SLICED` 是**坏组合**，有人用九宫格却让它保持原图小尺寸，等于白配置
+
+**组合速查**：
+
+| 场景 | `_type` | `_sizeMode` | `UITransform._contentSize` |
+|------|---------|-------------|---------------------------|
+| 普通图标 / 方块 icon / 角色 | `0` SIMPLE | `1` TRIMMED | 自动 = 贴图尺寸 |
+| 按钮底图（小图拉成按钮大小） | `1` SLICED | `0` CUSTOM | 手填（如 200×80） |
+| 面板/弹窗背景（九宫格大面积拉伸）| `1` SLICED | `0` CUSTOM | 手填（如 600×800） |
+| 进度条底图（九宫格） | `1` SLICED | `0` CUSTOM | 手填（如 300×20） |
+| 进度条前景（按百分比填充）| `3` FILLED | `0` CUSTOM | 手填（同底图）|
+| 强制 icon 框统一尺寸（把小图拉大）| `0` SIMPLE | `0` CUSTOM | 手填（如 64×64） |
+| 全屏半透明 mask | `0` SIMPLE | `0` CUSTOM | Widget 撑满 |
+
+**怎么一眼判断**：问自己两句话。
+1. 这张图是否**九宫格素材**（美术标注了九宫格 / 有中央可拉伸区）？是 → `SLICED`+`CUSTOM`，否 → `SIMPLE`
+2. 节点尺寸是否**需要手填**（控件尺寸、固定框、被 Layout 分配）？是 → `CUSTOM`，否 → `TRIMMED`
 
 ### 视觉子节点组件映射
 

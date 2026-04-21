@@ -7,9 +7,11 @@ SKILL_DIR="$HOME/.claude/skills"
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 
 # 1. 同步 Skills
+# ⚠ cp -r src/ dst/ 在 dst 已存在时会嵌套（把 src 放 dst 里面）→ 必须先 rm 再 cp
 mkdir -p "$SKILL_DIR"
 for dir in "$REPO_DIR/skills"/*/; do
     name=$(basename "$dir")
+    rm -rf "$SKILL_DIR/$name"
     cp -r "$dir" "$SKILL_DIR/$name"
     echo "  ✓ skill: $name"
 done

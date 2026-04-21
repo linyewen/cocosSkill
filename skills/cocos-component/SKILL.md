@@ -169,6 +169,8 @@ def compress_uuid(uuid_str: str) -> str:
 | 自定义脚本无效 | `__type__` 用的是压缩 UUID 吗？是否刷新了编辑器？ |
 | @property 绑成了错的东西 | Component 类型绑的是组件 `__id__` 不是节点 `__id__`！ |
 | ProgressBar 不动 | Bar Sprite `_type` 应为 0 或 1，不是 3(FILLED) |
+| 九宫格按钮/面板没拉伸 | `SLICED` 必须配 `CUSTOM`，且 UITransform 要手填尺寸（见 ui-components.md type+sizeMode 组合决策） |
+| 图被拉变形 / 被压扁 | 要么改 `SLICED`（九宫格素材），要么用 `TRIMMED` 让节点跟图走（不靠 Layout 压尺寸）|
 
 ---
 
