@@ -23,6 +23,18 @@ cd ~/cocosSkill && bash install.sh
 cd ~/cocosSkill && git pull && bash install.sh
 ```
 
+### 修改 skill / CLAUDE.md 后回流（开发者）
+
+在项目里临时改了 `~/.claude/skills/xxx/SKILL.md` 或 `~/.claude/CLAUDE.md` 验证有效后，必须回流到 cocosSkill 仓库，否则下个项目又踩同样的坑：
+
+```bash
+cp ~/.claude/skills/xxx/SKILL.md ~/cocosSkill/skills/xxx/SKILL.md
+cp ~/.claude/CLAUDE.md ~/cocosSkill/CLAUDE.md  # 如改了全局铁律
+cd ~/cocosSkill && git add . && git commit -m "..." && git push
+```
+
+> `install.sh` 对已存在的 `~/.claude/CLAUDE.md` 会跳过覆盖（避免冲掉本地改动），因此回流后别的机器要拿到新版必须手动 `cp ~/cocosSkill/CLAUDE.md ~/.claude/CLAUDE.md`。
+
 ### 新项目初始化（一键）
 
 ```bash
