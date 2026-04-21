@@ -305,3 +305,40 @@ Script/
 - 跑酷游戏：ObstacleManager, CoinManager, PowerUpManager
 
 Manager 的名字变了，但架构模式不变。
+
+---
+
+## 模式控制器模式（来自 CLAUDE.md 7.1 迁入）
+
+当游戏有多种模式时（经典/生存/养成/无尽/闯关...），**禁止在 GameManager 中写 `if (gameMode === 'xxx')` 分支**。用接口 + 独立类隔离：
+
+```typescript
+// 接口定义模式行为
+interface IGameMode {
+    init(ctx: GameContext): void;
+    start(): void;
+    update(dt: number): void;
+    onBlockDestroyed(data): void;
+    onCannonLapDone(data): void;
+    destroy(): void;
+}
+
+// GameManager 只做模式分发（唯一的 if 判断）
+const mode = gameMode === 'survival' ? new SurvivalMode() : new ClassicMode();
+mode.init(ctx);
+
+// 每种模式是独立文件
+// mode/ClassicMode.ts — 关卡加载/全清胜利/托盘满失败
+// mode/SurvivalMode.ts — 波次调度/元素生长/升级系统
+```
+
+**好处**：加新模式只需新建文件，不影响已有模式。共享组件（PixelGrid/BeltSystem/Cannon）提供能力，模式控制器决定策略。
+
+### ProjectDrop 参考实现
+
+`GameMode` 枚举 + `ModeController.selectMode` + `GameEntry.onModeSelected` 分叉：
+- `GameMode.PLAYABLE` → `startPlayable()`
+- `GameMode.LEVEL` → `startLevel(levelNo)`
+- `GameMode.ENDLESS` → `startEndless()`
+
+每种模式的差异（是否 spawn ItemBar / BulletShop / 是否允许带道具 / 结算 prefab 是哪个）都在各自 `start*()` 里处理，GameEntry 只做分发。

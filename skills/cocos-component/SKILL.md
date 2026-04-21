@@ -149,9 +149,37 @@ Node
 | `_spriteFrame` | UUID 格式必须是 `{uuid}@{subAssetId}` | 不是裸 UUID，`@f9941` 是 spriteFrame 子资源后缀 |
 | `_spriteFrame` | 新建图片的 `.meta` 必须设 `type: sprite-frame` | 否则当作 texture 加载，Sprite 拿不到 |
 | `_spriteFrame` | 设为 `null` 不会报错但不显示 | 用于代码运行时动态设置的情况 |
-| `_sizeMode` | `0` = CUSTOM（手动设尺寸），`1` = TRIMMED（跟图走），`2` = RAW | 默认用 `0`，配合 UITransform 的 contentSize |
+| `_sizeMode` | `0` = CUSTOM（跟 UITransform.contentSize），`1` = TRIMMED（跟贴图），`2` = RAW（贴图原尺寸不裁切）| **默认 TRIMMED(1)**，只有需要控制大小才改 CUSTOM(0)。详见下面 sizeMode 决策表 |
 | `_type` | `0` = SIMPLE, `1` = SLICED, `2` = TILED, `3` = FILLED | 九宫格拉伸用 `1`，进度条用 `3` |
 | `__expectedType__` | 必须是 `"cc.SpriteFrame"` | 不是 `"cc.Texture2D"` |
+
+### sizeMode 决策表（来自 CLAUDE.md 3.3.1 迁入）
+
+| sizeMode | 值 | 含义 | 何时用 |
+|---------|---|------|-------|
+| TRIMMED | 1 | 用贴图裁切后的自身尺寸 | **默认**，图标/按钮/角色等不需要手动设大小 |
+| CUSTOM | 0 | 跟随 UITransform contentSize | 九宫格拉伸、方块 icon、全屏 mask、需固定尺寸的小图标 |
+| RAW | 2 | 用贴图原始尺寸（不裁切）| 极少用 |
+
+**规则：不设置大小的都用 TRIMMED(1)，只有明确需要控制大小才改 CUSTOM(0)。**
+
+### _layer 规则（来自 CLAUDE.md 3.6 迁入）
+
+| 节点类型 | _layer 值 | 说明 |
+|---------|-----------|------|
+| Canvas 及所有 UI 子节点 | `1073741824` | DEFAULT 层（project_1 实测验证） |
+| Camera 节点 | `1073741824` | 同上 |
+| Prefab 中所有节点 | `1073741824` | 和 Scene 中节点一致 |
+
+> ⚠️ 不要用 `33554432`(UI_2D)，实测不正确会导致渲染层级问题。以 project_1 实际可运行文件为准。
+
+### 视觉子节点组件映射（来自 CLAUDE.md 3.3 迁入）
+
+视觉子节点必须挂对应渲染组件（批量创建时最易遗漏）：
+- `icon` → UITransform + **Sprite**
+- `shadow` → UITransform + **Sprite**
+- `label` → UITransform + **Label**
+- 纯逻辑节点（shotNode / effect）→ 只需 UITransform
 
 ### SpriteFrame UUID 获取方式
 

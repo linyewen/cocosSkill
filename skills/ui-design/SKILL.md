@@ -78,3 +78,99 @@
 - ❌ 改 JSON 文件设 spriteFrame — 编辑器会覆盖，用 MCP
 - ❌ 没看效果图就定位 — 先理解空间关系
 - ❌ 边角元素写死坐标 — 用 Widget 适配
+
+---
+
+## View / Item 分离原则（来自 CLAUDE.md 5.2 迁入）
+
+**页面（View）职责**：管生命周期、布局、动画、流程。不关心子元素长什么样。
+**子元素（Item）职责**：管数据展示，通过 `setData(data)` 刷新自己。不关心自己在哪个页面里。
+
+**Item 必须有 `setData()` 方法** — 对象池回收再取出不走 onLoad，只调 setData。
+
+同一个 Item 可出现在不同 View 里 — 竖屏 3 选 1、横向滚动、九宫格。
+
+```typescript
+// ✓ 正确：Item 组件
+@ccclass('LevelItem')
+export class LevelItem extends Component {
+    @property(Label) levelLabel: Label = null;
+    @property(Sprite) starIcon: Sprite = null;
+
+    setData(data: { level: number; stars: number }): void {
+        this.levelLabel.string = `第 ${data.level} 关`;
+        this.starIcon.spriteFrame = getStarSprite(data.stars);
+    }
+}
+
+// ✓ View 只 instantiate + setData
+for (const lvData of this.levels) {
+    const item = instantiate(this.levelItemPrefab);
+    item.getComponent(LevelItem).setData(lvData);
+    this.content.addChild(item);
+}
+```
+
+---
+
+## 全屏页面标准结构（来自 CLAUDE.md 3.2 迁入）
+
+结算、选择、引导等全屏页面：
+
+```
+XxxView (Widget 四边=0 _alignFlags=45 + 脚本)
+├── mask (Sprite 黑色 + UIOpacity=100 + sizeMode=CUSTOM)   ← 纯视觉，无 BlockInputEvents
+└── content (UIOpacity + Layout)
+    ├── Item 实例
+    └── ...
+```
+
+### 触摸拦截（重要）
+
+**不用 `BlockInputEvents` 组件**（会吞掉子节点和全局触摸事件）。改为脚本 onLoad 中注册：
+
+```typescript
+// 根节点拦截触摸，阻止事件穿透到游戏层
+this.node.on(Node.EventType.TOUCH_START, (e) => { 
+    e.propagationStopped = true; 
+}, this);
+
+// 如需点击任意位置触发操作（如引导页跳过）：
+this.node.on(Node.EventType.TOUCH_END, this.onClick, this);
+```
+
+### 预制体三种类型
+
+| 类型 | 判断标准 | 根节点设计 | 适配策略 |
+|------|---------|-----------|---------|
+| **全屏页面** | 覆盖整个屏幕，模态交互 | Widget 四边=0 + 脚本 | 必须 Widget 适配 |
+| **嵌入式组件** | 局部区域展示 | UITransform=自身大小 + 脚本 | 按需 |
+| **游戏对象** | 存在于游戏世界，有碰撞和生命周期 | 脚本 + 碰撞体 | 不需要 |
+
+---
+
+## 多层 UI 点击事件规则
+
+### 子节点会吞 TOUCH_END
+
+Cocos 3.x UI 事件机制：任何带 UITransform 的节点默认拦截 touch，不自动冒泡。
+
+**做法**：
+
+- 想让节点响应点击 → 挂 `cc.Button` 组件 + 监听 `Button.EventType.CLICK`
+- 不要用 `Node.EventType.TOUCH_END` 在多层 UI 上
+
+```typescript
+// ❌ 错
+slot.on(Node.EventType.TOUCH_END, ...);
+
+// ✓ 对
+slot.addComponent(Button);  // 或 prefab 里挂好
+slot.on(Button.EventType.CLICK, ...);
+```
+
+### Button transition 推荐
+
+- `_transition: 3` (SCALE) — 按下缩放反馈，通用性最好
+- `_transition: 2` (COLOR) — 按下变色，慎用（颜色乘算容易压黑）
+- `_transition: 0` (NONE) — 无反馈，玩家觉得按了没反应，不推荐

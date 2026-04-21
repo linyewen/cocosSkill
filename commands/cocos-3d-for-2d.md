@@ -61,3 +61,16 @@ Scene
 4. **检查 layer/visibility** — Camera visibility 包含 UI_2D？
 5. **检查资源** — Sprite 有 spriteFrame？图片 meta 是 sprite-frame 类型？
 6. **对比成功项目** — diff 能跑的项目的 scene.scene，找差异
+
+---
+
+## 调 infra 工具前先读函数签名（来自 CLAUDE.md 10.6.E 迁入）
+
+**ProjectDrop 血泪**：
+- `AnimationManager.play()` 接收 **Node**，不接收 Sprite。凭印象传 Sprite 会报错
+- `BaseUtil.shakeScreen()` 原版在 3D 引擎 2D 场景会**黑屏**
+  - 原因：硬编码 `originalPos = v3(0, 0, 0)`，但 Camera 在 z=1000。震完后 Camera 被设到 z=0 → 什么都渲染不出
+  - `cocosSkill/lib/BaseUtil.ts` 已修（保留 origZ）
+  - 生产级做法见 ProjectDrop `EffectManager.safeShake`（100ms 节流 + 保留 z）
+
+**规则**：调任何 infra 工具前，先 `cat` 一下源文件看签名，不要凭印象传参。

@@ -284,3 +284,76 @@ for (const gold of this.activeGolds) {
 | 卡牌 | 卡牌 | 卡牌数据、位置 | 翻转/拖拽 | 打出特效 |
 
 名字和参数不同，但 `init → show → update → onDie → recycle` 的生命周期相同。
+
+---
+
+## 组件获取决策（来自 CLAUDE.md 5.1 迁入）
+
+```typescript
+// ★ 最优：@property 编辑器连线
+@property(Sprite) icon: Sprite = null;
+
+// ● 次优：getComponent 运行时查询一次并缓存
+onLoad() { this.sprite = this.getComponent(Sprite); }
+
+// ▲ 条件性：addComponent 运行时才需要
+activateShield() { this.node.addComponent(CircleCollider2D); }
+
+// ✗ 禁止：每帧 getComponent
+update() { this.getComponent(Sprite).color = ...; }
+
+// ✗ 禁止：getChildByName 获取子节点组件
+const iconNode = node.getChildByName('icon');
+const sprite = iconNode.getComponent(Sprite);
+sprite.spriteFrame = sf;
+
+// ✓ 正确：组件暴露方法，外部通过方法操作
+// 组件内部：
+@property(Sprite) icon: Sprite = null;
+setIcon(sf: SpriteFrame): void { if (this.icon) this.icon.spriteFrame = sf; }
+get iconNode(): Node | null { return this.icon ? this.icon.node : null; }
+// 外部调用：
+const coin = node.getComponent(Coin);
+coin.setIcon(spriteFrame);
+```
+
+### `getChildByName` 使用规则
+
+- ✗ 禁止用于获取 prefab 内部子节点的组件（应通过 @property + 组件方法）
+- ✓ 仅允许用于场景级节点查找（如 `canvas.getChildByName('Camera')`）
+- **原因**：getChildByName 让 Manager 依赖 prefab 内部结构（节点命名），破坏封装。编辑器中也无法追踪绑定关系。
+
+---
+
+## 脚本 vs 普通类（来自 CLAUDE.md 5.3 迁入）
+
+| 场景 | 做法 | 原因 |
+|------|------|------|
+| 需要 onLoad/update/onDestroy | 继承 `Component` | Enemy、Player、UI 控制器 |
+| 纯数据/纯逻辑 | 普通 class | Config、AI、状态机 |
+| 全局单例，需要节点引用 | Component 挂场景节点 | SoundManager |
+| 全局单例，无节点依赖 | 普通 class 静态单例 | EventDispatcher |
+
+---
+
+## 碰撞类型判断（来自 CLAUDE.md 5.4 迁入）
+
+碰撞矩阵做粗过滤，代码用 `getComponent` 做精确识别。不依赖 `collider.group` / `getGroup()` 等 API。
+
+```typescript
+// ✓ 正确：组件判断，类型安全
+const projectile = event.otherCollider.node.getComponent(Projectile);
+if (projectile) this.takeDamage(projectile.damage);
+
+// ✗ 错误：依赖 group API
+if (event.otherCollider.getGroup() === 4) { ... }
+```
+
+---
+
+## 生命周期规范（来自 CLAUDE.md 5.5 迁入）
+
+- 所有 Component 子类必须实现 `onLoad()`
+- 碰撞回调在 `onLoad` 中注册，`onDestroy` 中注销
+- 抽象基类必须实现所有生命周期空方法，确保子类 `super.xxx()` 安全
+- **不在 start() 中做业务初始化**，业务逻辑由外部调用触发（View 的 `show()`、Item 的 `setData()`）
