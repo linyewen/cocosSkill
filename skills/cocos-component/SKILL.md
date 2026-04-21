@@ -171,6 +171,8 @@ def compress_uuid(uuid_str: str) -> str:
 | ProgressBar 不动 | Bar Sprite `_type` 应为 0 或 1，不是 3(FILLED) |
 | 九宫格按钮/面板没拉伸 | `SLICED` 必须配 `CUSTOM`，且 UITransform 要手填尺寸（见 ui-components.md type+sizeMode 组合决策） |
 | 图被拉变形 / 被压扁 | 要么改 `SLICED`（九宫格素材），要么用 `TRIMMED` 让节点跟图走（不靠 Layout 压尺寸）|
+| Icon + Label 组合里 label 数字一变就把 icon 挤偏 | Label 的 `_anchorPoint` 要贴 Layout 起始边：Horizontal → `(0, 0.5)`，Vertical → `(0.5, 0)`。详见 ui-components.md Label 铁律 |
+| 多行 label 上下错位 | `_fontSize` 必须 `= _lineHeight` |
 
 ---
 

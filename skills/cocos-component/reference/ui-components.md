@@ -217,6 +217,33 @@ SpriteFrame UUID: cb1af3a9-924d-4ed6-b9b9-8daaf11be8fa@f9941  (加 @f9941 后缀
 | `_verticalAlign` | 1 (CENTER) | 几乎 100% 都是居中 |
 | 自定义字体 | `_isSystemFontUsed: false` | 配合 `_font: {"__uuid__":"...","__expectedType__":"cc.TTFFont"}` |
 
+### Label 铁律（必须遵守）
+
+**1. 字号与行高一致**：`_fontSize` 必须 `= _lineHeight`（否则上下错位，多行时尤其明显）
+
+**2. anchorPoint 按场景分两种**：
+
+| 场景 | 父节点 | Label 节点的 anchorPoint |
+|------|-------|-------------------------|
+| **独立 Label**（单独一段文字） | 任意 | `(0.5, 0.5)` 中心锚定 |
+| **Icon + Label 组合（Horizontal Layout）** | 带 `cc.Layout` 的父 Node | `(0, 0.5)` — **x=0** 左侧锚定 |
+| **Icon + Label 组合（Vertical Layout）** | 带 `cc.Layout` 的父 Node | `(0.5, 0)` — **y=0** 底部锚定 |
+
+**为什么组合模式要改锚点**：Label 字数变化 → 尺寸变化。anchor = 0.5 时 Label 向两侧/上下**双向扩张**，会挤到相邻 icon 造成位移；anchor 设到 Layout 排列方向的**起始边**（Horizontal 的左 / Vertical 的底）后，Label 只向外侧单向扩张，icon 位置稳定。
+
+**典型组合结构**（血量图标 + 数值）：
+
+```
+HpDisplay (UITransform + Layout: horizontal, resizeMode=CONTAINER)
+├── iconHeart (UITransform + Sprite, anchor=(0.5, 0.5))
+└── labelHp   (UITransform + Label,  anchor=(0, 0.5))
+```
+
+父 Node 的 Layout 要求：
+- `_type: 1` (HORIZONTAL) 或 `_type: 2` (VERTICAL)
+- `_resizeMode: 1` (CONTAINER) — 整体跟随子元素尺寸自适应（最常见）
+- 或 `_resizeMode: 2` (CHILDREN) — 外框固定，Layout 分配子元素（固定宽度的卡片槽）
+
 ---
 
 ## Button + ClickEvent
