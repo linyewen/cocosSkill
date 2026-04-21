@@ -120,6 +120,38 @@
 
 **规避**：新 prefab 设计时画一下引用方向图，强制单向依赖。
 
+### 坑 5：Sprite 没绑 spriteFrame = 整个不渲染（黑屏元凶）
+
+**现象**：场景看起来正常但 Play 后一片黑 / 某节点"看不见但点得到"。检查发现 Sprite 的 `_spriteFrame: null`，代码靠运行时 `resources.load(...)` 去 set。
+
+**原因**：Cocos 3.x 的 Sprite 必须有 spriteFrame 才渲染——即使 `_color.a=255`、`contentSize` 正确，没 spriteFrame 就不生成绘制批次。`resources.load` 是异步的，load 失败时静默，没 spriteFrame 就永远黑。这等于把正确性押在异步 I/O 上，违反 CLAUDE.md §5.1「引用的节点/组件必须在编辑器中创建并绑定，代码中直接使用」。
+
+**规避**：**所有 Sprite 的 spriteFrame 必须在 prefab / scene 里直接绑定**。如果一个 Sprite 预期被帧动画刷新（比如 Coin/Player），也要绑首帧作为初始图。代码里**不要用 `resources.load` 为 Sprite 补图**——那是绕过编辑器的 fallback，出问题时 silent fail 让你查到怀疑人生。
+
+**自检**：
+```bash
+# prefab/scene 里搜有无 _spriteFrame: null
+grep -n '"_spriteFrame": null' assets/**/*.prefab assets/**/*.scene
+```
+任何 Sprite 都不该留 null，除非故意要"透明占位"。
+
+### 坑 6：MCP `prefab_create_prefab` 会丢掉所有视觉字段
+
+**现象**：MCP 先在场景搭好节点 + 设好 spriteFrame + color + sizeMode + contentSize + 子节点 position，然后 `prefab_create_prefab`——打开生成的 .prefab，**发现 spriteFrame 变 null、color 回白、sizeMode=1、contentSize=100×100、子节点 position=0,0,0**。等于 MCP 只序列化了节点结构和组件种类，视觉属性全部重置成默认值。
+
+**原因**：MCP 的 prefab_create_prefab 内部走的是"引擎序列化"路径，它当前实现把这些字段当成"运行时 override"而非"prefab 默认值"，序列化时全丢。和 `set_component_property` 在场景上下文的行为不对齐。
+
+**规避**：MCP 只用来**生成节点骨架**（层级、组件种类、脚本 attach），视觉属性**转完 prefab 后必须直接改 JSON 补回**：
+- `_spriteFrame` → 填 `{"__uuid__": "xxxx@f9941", "__expectedType__": "cc.SpriteFrame"}`
+- `_sizeMode` → 0 (CUSTOM) 或 1 (TRIMMED)
+- `_color` → `{"__type__": "cc.Color", "r":..., "g":..., "b":..., "a":...}`
+- `_contentSize` → `{"__type__": "cc.Size", "width": W, "height": H}`
+- 子节点 `_lpos` → `{"__type__": "cc.Vec3", "x": X, "y": Y, "z": 0}`
+
+改完必须 `reimport_asset` + 编辑器关闭打开该 prefab 文档验证（🟡 档）。
+
+**更彻底的做法**：既然 MCP 转 prefab 这一步都要重写，不如直接写 .prefab JSON（参考 `reference/prefab-json-format.md`），跳过 MCP。但结构复杂（嵌套多层子节点）时还是 MCP 建骨架比较快。
+
 ---
 
 ## 快速模板（用户可复制）

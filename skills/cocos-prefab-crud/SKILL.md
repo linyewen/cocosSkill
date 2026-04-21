@@ -19,11 +19,30 @@ Cocos 3.8 的 prefab/scene 是序列化 JSON，看起来可以随手改，但实
 
 ---
 
-## 三条硬红线（违反必回滚）
+## 四条硬红线（违反必回滚）
 
 1. **不用 Python/脚本从零生成 prefab 结构 JSON**。结构（新节点 / 新组件 / 层级变化）一律走编辑器手建。Python 只改已有节点的字段值。
 2. **不跳过编辑器肉眼验证**。任何 prefab/scene 改完必须 reimport + 开一次文档，目测 @property 面板无红色 null、SpriteFrame 无白方块，再 commit。
 3. **.ts.meta 的 uuid 只能由 Cocos 生成**。若必须预生成（脚本文件新加且 Cocos 未启动），必须在交付说明里明标 ⛔ 需要重启编辑器。
+4. **所有 Sprite 的 `_spriteFrame` 必须在 prefab/scene 里预先绑定**。绝对不能依赖运行时 `resources.load(...)` 去补图。
+   - Sprite 没 spriteFrame 就不渲染（即使颜色不透明、contentSize 正确），直接看起来"消失/黑屏"
+   - `resources.load` 是异步 + silent fail，路径写错 / meta 未生成 sprite-frame submeta 时整个场景渲染失败
+   - 就算一个 Sprite 会被帧动画刷新（如 Coin/Player），也要绑首帧作为初始图，让动画加载前就能看到占位
+   - 自检：`grep -rn '"_spriteFrame": null' assets/**/*.prefab assets/**/*.scene` 为空
+
+---
+
+## MCP 不能信的几个动作（遇到必改走 JSON）
+
+MCP 的 scene/prefab 类 API 有些场景会**静默丢数据**，验证发现结果跟设置不符是常事。已知坑：
+
+| MCP 动作 | 丢什么 | 正确做法 |
+|---|---|---|
+| `prefab_create_prefab`（转 prefab）| spriteFrame / color / sizeMode / contentSize / 子节点 position 全被重置成默认值 | 转完后必须直接改 .prefab JSON 补回所有视觉字段，再 `reimport_asset` |
+| `component_set_component_property` 设 `_spriteFrame` + 随后 `prefab_create_prefab` | spriteFrame 丢 | 同上：只用 MCP 建骨架，视觉字段走 JSON |
+| `scene_save_scene`（自定义脚本 @property 绑过 Prefab/Node）| 若编辑器内存中未正确解析压缩 UUID 脚本，会把绑定写成 null 覆盖 JSON | 先 save_scene 让编辑器写出 null 占位，再 Python patch UUID，再 `open_scene`，**不再 save** |
+
+**原则**：MCP 用来**生成节点骨架 + attach 脚本**，任何**引用类字段**（SpriteFrame / Prefab / Node 数组等）必须走 JSON。改完 `reimport_asset` + 关闭重开对应文档（🟡/🔴）。
 
 ---
 
@@ -54,11 +73,7 @@ Cocos 3.8 的 prefab/scene 是序列化 JSON，看起来可以随手改，但实
 
 **如果任务跨越多个模板**：按依赖顺序分步执行，每步走完验证再下一步。
 
-**跨项目 starter**：本仓库（cocosSkill）的 `lib/`（TS 运行时基础库）+ `scripts/`（Python 工具）就是 starter 素材。新项目：
-```bash
-cp cocosSkill/lib/*.ts your-project/assets/Script/infra/
-cp cocosSkill/scripts/*.py your-project/scripts/
-```
+**跨项目 starter 位置**：`D:\minigame\cocos-game-starter\`（包含 infra/ 运行时基础库 + scripts/ 通用 Python 工具）
 
 ---
 
@@ -105,9 +120,9 @@ cp cocosSkill/scripts/*.py your-project/scripts/
 - [uuid_compress.py](tools/uuid_compress.py) — 完整 UUID → 压缩 UUID
 - [find_id_by_name.py](tools/find_id_by_name.py) — 在 prefab/scene JSON 里按 `_name` 定位 `__id__`
 
-**生产级完整工具在本仓库的 `scripts/` 里**（推荐直接用）：
-- `scripts/prefab_builder.py` — 完整 PrefabBuilder 类 + `ensure_cocos_closed()` 防呆 + `patch_scene_prefab_ref()` 注入工具
-- `scripts/ui_factories.py` — `make_button` / `make_popup_root` / `make_label` / `make_card` / `make_mask` 等高频 UI 模式
+**生产级完整工具在 starter 里**（推荐直接用）：
+- `D:\minigame\cocos-game-starter\scripts\prefab_builder.py` — 完整 PrefabBuilder 类 + `ensure_cocos_closed()` 防呆 + `patch_scene_prefab_ref()` 注入工具
+- `D:\minigame\cocos-game-starter\scripts\ui_factories.py` — `make_button` / `make_popup_root` / `make_label` / `make_card` / `make_mask` 等高频 UI 模式
 
 ---
 
